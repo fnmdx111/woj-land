@@ -14,6 +14,7 @@
 extern "C"
 {
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -50,6 +51,13 @@ int main(int argc, char *argv[], char *envp[])
     signal(SIGALRM, timeout);
 
 //编译---------------------------------------------------------------------
+/**
+ * This compilation procedure also applies to interpreted languages so that
+ * minimal changes must be made to implement supports for interpreted
+ * languages.
+ * See also `pseudo_compile.py'
+ */
+
     pid_t compiler = fork();
     int status = 0;
     if (compiler < 0)
@@ -103,8 +111,44 @@ int main(int argc, char *argv[], char *envp[])
                         "-Co", "-Cr", "-Ct", "-Ci",
                        NULL);
                 break;
+
+            default: {
+                // Following are procedures for pseudo compiling sources of
+                // interpreted languages.
+                char* lang_str = "unknown";
+                switch (problem::lang) {
+#define DEF_LANG(LANG) \
+    case judge_conf::LANG_ ## LANG: lang_str = #LANG; break;
+#define DEF_LANG2(LANG, LANG_STR) \
+    case judge_conf::LANG_ ## LANG: lang_str = #LANG_STR; break;
+                    DEF_LANG(PYTHON2)
+                    DEF_LANG(PYTHON3)
+                    DEF_LANG(RUBY)
+#undef DEF_LANG
+#undef DEF_LANG2
+                }
+
+                // Have the `lang_str' lowercased.
+                char lowercased_lang_str[128];
+                int lang_str_len = strlen(lang_str);
+                int i = 0;
+                for (; i < min(strlen(lang_str_len), 128); i++) {
+                    lowercased_lang_str[i] = tolower(lang_str[i]);
+                }
+                lowercased_lang_str[i] = '\0';
+
+                FM_LOG_TRACE("start: pseudo_compile %s %s %s",
+			     lowercased_lang_str,
+			     problem::source_file.c_str(),
+                             problem::exec_file.c_str());
+                execlp("./pseudo-compile %s %s %s",
+                       lowercased_lang_str,
+		       problem::source_file.c_str(),
+		       problem::exec_file.c_str(),
+		       NULL);
+            }
         }
-                
+
         //如果执行到这里说明execlp出错了
         FM_LOG_WARNING("exec error");
         exit(judge_conf::EXIT_COMPILE);
@@ -129,6 +173,12 @@ int main(int argc, char *argv[], char *envp[])
             else if (judge_conf::GCC_COMPILE_ERROR == WEXITSTATUS(status))
             {
                 FM_LOG_TRACE("compile error");
+                output_result(judge_conf::OJ_CE);
+                exit(judge_conf::EXIT_OK);
+            }
+            else if (judge_conf::PSEUDO_COMPILE_UNSUPPORTED_LANGUAGE_ERROR
+                     == WEXITSTATUS(status)) {
+                FM_LOG_TRACE("pseudo compile error");
                 output_result(judge_conf::OJ_CE);
                 exit(judge_conf::EXIT_OK);
             }

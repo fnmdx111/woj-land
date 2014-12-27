@@ -139,6 +139,7 @@ namespace judge_conf
     const int GIGA              = KILO * MEGA;  // 1G
 
     const int GCC_COMPILE_ERROR = 1;
+    const int PSEUDO_COMPILE_UNSUPPORTED_LANGUAGE_ERROR = 0x80000001;
 
     //退出原因
     const int EXIT_OK               = 0;
@@ -159,11 +160,31 @@ namespace judge_conf
     const int EXIT_UNKNOWN          = 127;
 
     const std::string languages[]    = {"unknown", "c", "c++", "java", "pascal"};
-    const int LANG_UNKNOWN      = 0;
-    const int LANG_C            = 1;
-    const int LANG_CPP          = 2;
-    const int LANG_JAVA         = 3;
-    const int LANG_PASCAL       = 4;
+    /**
+     * Lang code is a constant of unsigned integer as following
+     * bit 31 30 29 28 | 27 26 25 24 | 23 22 21 20 | 19 18 17 16 | 15-0
+     *     CN PC UU UU | UU UU UU UU | UU UU ST DT | UU UU CS JB | NM
+     *
+     * CN: Compilation Needed
+     * PC: Pseudo-compilation Needed
+     * UU: Unused bit
+     * JB: JVM-based Language
+     * CS: CLR-based Language
+     * ST: Static-typing
+     * DT: Dynamic-typing
+     * NM: Number (A 16-bit integer is enough for numbering all the language supported, I presume.)
+     * */
+    const unsigned int LANG_UNKNOWN      = 0;
+    const unsigned int LANG_C            = 0x80200001;
+    const unsigned int LANG_CPP          = 0x80200002;
+    const unsigned int LANG_JAVA         = 0x80210003;
+    const unsigned int LANG_PASCAL       = 0x80200004;
+    const unsigned int LANG_PYTHON       = 0x40100005;
+    const unsigned int LANG_RUBY         = 0x40100006;
+    const unsigned int LANG_SCALA        = 0x80210007;
+    const unsigned int LANG_CLOJURE      = 0x00110008;
+
+    const unsigned int COMPILATION_NEEDED = 1;
 };
 
 namespace problem
@@ -206,7 +227,7 @@ namespace problem
     {
         FM_LOG_DEBUG("--problem information--");
         FM_LOG_DEBUG("id            %d", id);
-        FM_LOG_DEBUG("lang          %s", judge_conf::languages[lang].c_str());
+        FM_LOG_DEBUG("lang code     %x", lang);
         FM_LOG_DEBUG("time_limit    %d", time_limit);
         FM_LOG_DEBUG("memory_limit  %d", memory_limit);
         FM_LOG_DEBUG("output_limit  %d", output_limit);
