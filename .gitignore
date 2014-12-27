@@ -38,4 +38,7 @@ tramp
 Session.vim
 .netrwhist
 
+# for this project
+*.in
+*.out
 
