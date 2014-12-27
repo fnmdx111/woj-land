@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /land/
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^.*$ - [QSA,L]
+
+RewriteRule ^.*$ index.php [QSA,L]

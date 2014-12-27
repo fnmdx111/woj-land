@@ -1,0 +1,33 @@
+/*
+CodeHilighter v.85 
+File: codeh.js, chcommon.js, codeh.css
+Developed By Sandy_zc_1
+Date: 2009/6/23
+*/
+
+.shCmm1
+{
+	color:#339933;
+}
+.shPre1
+{
+	color:#bb4411;
+}
+.shType1
+{
+	color:#5588aa;
+	font-weight:bold;  
+}
+.shReser1
+{
+	color:#0000ff;
+	font-weight:bold;  	
+}
+.shString1
+{
+	color:#dd0000;
+}
+.shCommon1
+{
+	color:#AA0099;
+}
