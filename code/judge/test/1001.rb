@@ -1,0 +1,2 @@
+puts (eval gets.tr ' ', ?+)
+
