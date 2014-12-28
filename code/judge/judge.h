@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
-extern "C" 
+extern "C"
 {
 #include <unistd.h>
 #include <sys/time.h>
@@ -163,11 +163,13 @@ namespace judge_conf
     /**
      * Lang code is a constant of unsigned integer as following
      * bit 31 30 29 28 | 27 26 25 24 | 23 22 21 20 | 19 18 17 16 | 15-0
-     *     CN PC UU UU | UU UU UU UU | UU UU ST DT | UU UU CS JB | NM
+     *     00 UU CN PC | UU UU RF CR | UU UU ST DT | UU UU CS JB | NM
      *
      * CN: Compilation Needed
      * PC: Pseudo-compilation Needed
      * UU: Unused bit
+     * CR: chroot Before Execution
+     * RF: Restricted by RF Table
      * JB: JVM-based Language
      * CS: CLR-based Language
      * ST: Static-typing
@@ -175,22 +177,29 @@ namespace judge_conf
      * NM: Number (A 16-bit integer is enough for numbering all the language supported, I presume.)
      * */
     const unsigned int LANG_UNKNOWN      = 0;
-    const unsigned int LANG_C            = 0x80200001;
-    const unsigned int LANG_CPP          = 0x80200002;
-    const unsigned int LANG_JAVA         = 0x80210003;
-    const unsigned int LANG_PASCAL       = 0x80200004;
-    const unsigned int LANG_PYTHON       = 0x40100005;
-    const unsigned int LANG_RUBY         = 0x40100006;
-    const unsigned int LANG_SCALA        = 0x80210007;
-    const unsigned int LANG_CLOJURE      = 0x00110008;
+    const unsigned int LANG_C            = 0x23200001;
+    const unsigned int LANG_CPP          = 0x23200002;
+    const unsigned int LANG_JAVA         = 0x22210003;
+    const unsigned int LANG_PASCAL       = 0x23200004;
+    const unsigned int LANG_PYTHON2      = 0x10100005;
+    const unsigned int LANG_PYTHON3      = 0x10100006;
+    const unsigned int LANG_RUBY         = 0x10100007;
+    const unsigned int LANG_SCALA        = 0x22210008;
+    const unsigned int LANG_CLOJURE      = 0x02110009;
 
-    const unsigned int COMPILATION_NEEDED = 1;
+    const unsigned int COMPILATION_NEEDED = 0x20000000;
+    const unsigned int PSEUDO_COMPILATION_NEEDED = 0x10000000;
+    const unsigned int JVM_BASED_LANGUAGE = 0x00010000;
+    const unsigned int CHROOT_BEFORE_EXECUTION = 0x01000000;
+    const unsigned int RESTRICTED_BY_RF_TABLE = 0x02000000;
+#define LANG(WHAT) (problem::lang & judge_conf::WHAT)
+#define LANG_NOT(WHAT) ((problem::lang & judge_conf::WHAT) == 0)
 };
 
 namespace problem
 {
     int id                  = 0;
-    int lang                = 0;
+    unsigned int lang       = 0;
     int time_limit          = 1000;
     int memory_limit        = 65536;
     int output_limit        = 8192;
@@ -256,22 +265,32 @@ void parse_arguments(int argc, char *argv[])
             case 'm': problem::memory_limit = atoi(optarg); break;
             case 'o': problem::output_limit = atoi(optarg); break;
             case 'S': problem::spj          = true;         break;
-            case 'l': problem::lang         = atoi(optarg); break;
+            case 'l': {
+#define DEF_LANG(LANG) else if (std::strcmp(optarg, #LANG) == 0) \
+    { problem::lang = judge_conf::LANG_ ## LANG; }
+                if (std::strcmp(optarg, "") == 0) {
+                    problem::lang = 0;
+                }
+                DEF_LANG(C)
+                DEF_LANG(CPP)
+                DEF_LANG(JAVA)
+                DEF_LANG(PASCAL)
+                DEF_LANG(PYTHON2)
+                DEF_LANG(PYTHON3)
+                DEF_LANG(RUBY)
+                DEF_LANG(SCALA)
+                DEF_LANG(CLOJURE)
+#undef DEF_LANG
+                break;
+            }
             default:
                 FM_LOG_WARNING("unknown option provided: -%c %s", opt, optarg);
                 exit(judge_conf::EXIT_BAD_PARAM);
         }
     }
-    switch (problem::lang)
-    {
-        case judge_conf::LANG_C:
-        case judge_conf::LANG_CPP:
-        case judge_conf::LANG_PASCAL:
-        case judge_conf::LANG_JAVA: 
-            break;
-        default:
-            FM_LOG_WARNING("Bad language specified: %d", problem::lang);
-            exit(judge_conf::EXIT_BAD_PARAM);
+    if (problem::lang == judge_conf::LANG_UNKNOWN) {
+        FM_LOG_WARNING("Bad language specified: %d", problem::lang);
+        exit(judge_conf::EXIT_BAD_PARAM);
     }
     problem::data_file              = problem::data_dir + "/" + judge_conf::data_filename;
     problem::exec_file              = problem::temp_dir + "/" + "a.out";
@@ -394,8 +413,6 @@ void set_limit()
         perror("setrlimit RLIMIT_FSIZE failed");
         exit(judge_conf::EXIT_SET_LIMIT);
     }
-
-    //FM_LOG_TRACE("set limit ok");
 }
 
 /*
@@ -450,7 +467,8 @@ void set_security_option()
         exit(judge_conf::EXIT_SET_SECURITY);
     }
     FM_LOG_DEBUG("cwd: %s", cwd);
-    if(problem::lang != judge_conf::LANG_JAVA) { //Java不能chroot否则无法运行jvm
+    if(LANG(CHROOT_BEFORE_EXECUTION)) { //Java不能chroot否则无法运行jvm
+                                        // So do the lot of interpreted languages.
         if (EXIT_SUCCESS != chroot(cwd))
         {
             FM_LOG_WARNING("chroot(%s) failed, %d: %s",
@@ -733,6 +751,7 @@ void output_result(int result, int memory_usage = 0, int time_usage = 0)
 static bool in_syscall = true;
 bool is_valid_syscall(int lang, int syscall_id, pid_t child, user_regs_struct regs)
 {
+    // return true;
     in_syscall = !in_syscall;
     //FM_LOG_DEBUG("syscall: %d, %s, count: %d", syscall_id, in_syscall?"in":"out", RF_table[syscall_id]);
     if (RF_table[syscall_id] == 0)

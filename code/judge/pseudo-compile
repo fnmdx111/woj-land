@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 
 # This script appends shebangs of respective languages and `chmod's
 # the generated script file so that it can run directly under a shell.
@@ -12,22 +12,19 @@ import sys
 import os
 import stat
 
-lang = sys.argv[1]
+lang = sys.argv[1].lower()
 src_filepath = sys.argv[2]
 exec_filepath = sys.argv[3]
 
 if lang not in SUPPORTED_LANGUAGES:
     exit(0x80000001)
 
-with open(src_filepath, 'r') as src,
-     open(exec_filepath, 'w') as exe:
-    exe.write(r'#!/usr/bin/env %s' % lang)
+with open(src_filepath, 'r') as src, open(exec_filepath, 'w') as exe:
+    exe.write('#! /usr/bin/env %s\n\n' % lang)
     exe.write(src.read())
 
     # mimic the permission setting of executables of gcc
     os.chmod(exec_filepath,
-              (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-             | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP
-             | stat.S_IROTH |                stat.S_IXOTH))
+             0o755)
 
 

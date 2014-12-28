@@ -41,4 +41,6 @@ Session.vim
 # for this project
 *.in
 *.out
+test/
+*.exe
 

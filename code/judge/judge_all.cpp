@@ -14,7 +14,6 @@
 extern "C"
 {
 #include <unistd.h>
-#include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -115,7 +114,7 @@ int main(int argc, char *argv[], char *envp[])
             default: {
                 // Following are procedures for pseudo compiling sources of
                 // interpreted languages.
-                char* lang_str = "unknown";
+                string lang_str = "unknown";
                 switch (problem::lang) {
 #define DEF_LANG(LANG) \
     case judge_conf::LANG_ ## LANG: lang_str = #LANG; break;
@@ -130,18 +129,18 @@ int main(int argc, char *argv[], char *envp[])
 
                 // Have the `lang_str' lowercased.
                 char lowercased_lang_str[128];
-                int lang_str_len = strlen(lang_str);
+                int lang_str_length = lang_str.length();
                 int i = 0;
-                for (; i < min(strlen(lang_str_len), 128); i++) {
+                for (; i < min(lang_str_length, 128); i++) {
                     lowercased_lang_str[i] = tolower(lang_str[i]);
                 }
                 lowercased_lang_str[i] = '\0';
 
-                FM_LOG_TRACE("start: pseudo_compile %s %s %s",
+                FM_LOG_TRACE("start: pseudo-compile %s %s %s",
 			     lowercased_lang_str,
 			     problem::source_file.c_str(),
                              problem::exec_file.c_str());
-                execlp("./pseudo-compile %s %s %s",
+                execlp("./pseudo-compile", "pseudo-compile",
                        lowercased_lang_str,
 		       problem::source_file.c_str(),
 		       problem::exec_file.c_str(),
@@ -293,13 +292,11 @@ int main(int argc, char *argv[], char *envp[])
                 exit(judge_conf::EXIT_PRE_JUDGE_PTRACE);
             }
             //载入程序
-            if (problem::lang != judge_conf::LANG_JAVA)
-            {
-                execl("./a.out", "a.out", NULL);
-            }
-            else
+            if (LANG(JVM_BASED_LANGUAGE))
             {
                 execlp("java", "java", "-Djava.security.manager", "-Djava.security.policy==../../java.policy", "Main", NULL);
+            } else {
+                execl("./a.out", "a.out", NULL);
             }
 
             //运行到此说明execlp出错了, 无法打日志了

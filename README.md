@@ -29,6 +29,16 @@ Pseudo-compiling the sources, which means that appending shebang at the start
 of the sources and `chmod`ing the sources to make them executable, and then
 `./a.out`. This should work for most interpreted languages. (LINUX DAFA HAO)
 
+#### 2014.12.28
+I've just ACed "The A + B Problem" in Python and Ruby!!! If only I could gain
+access to the server and update with this extension.
+
+However, I do notice that the RF Table method for restricting system calls may
+not be practical for Python and Ruby, of which the mechanism of running a
+simple program like "A + B" is basically overwhelming.
+
+**TODO** find a method other than RF Table to restrict system calls. Maybe AST?
+
 Contact
 ----
 For anything with regard to enhancements of woj-land, please file an issue.
