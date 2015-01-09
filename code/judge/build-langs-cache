@@ -1,0 +1,44 @@
+#! /usr/bin/python3
+
+"""Run this script every time you set up a new language
+in the `langs' folder. This script will create essential
+cache file for you so that the judging module and web
+module can automatically adopt your changes.
+
+AND DO NOT MODIFY THIS SCRIPT!!!"""
+
+import os
+import importlib
+
+
+def iid():
+    n = 0
+    def _():
+        nonlocal n
+        n += 1
+        return n
+    return _
+
+iid = iid()
+
+registry = {}
+
+for module in os.listdir('langs'):
+    if (module not in ['__init__.py', '_fundamental.py', '_utils.py']
+    and module.endswith('.py')):
+        module_name = module[:-3]
+
+        mod = importlib.import_module('langs.%s' % module_name)
+        print(mod)
+        lang = mod.lang
+
+        # Register the languages and give them a unique id.
+        registry[iid()] = lang
+
+        if lang.rf_enabled:
+            lang.export_rf()
+
+
+with open('langs/conf/langs.conf', 'w') as f:
+    for id_, lang in registry.items():
+        f.write('%s %s\n' % (id_, lang.code_name))

@@ -1,0 +1,23 @@
+#! /usr/bin/python3
+
+from langs._utils import args, load
+
+import sys
+
+# This module acts as requests router.
+# It should be called by `execlp' with the following arguments
+# lang_name src_file_path exec_file_path temp_dir_path
+
+if len(sys.argv) != 5:
+    # In total, there are five elements in `sys.argv'
+    sys.exit(0)
+
+
+lang, src_file_path, exec_file_path, temp_dir_path = args(4)
+
+processor = load(lang)
+
+processor.do(src_file_path,
+             exec_file_path,
+             temp_dir_path)
+

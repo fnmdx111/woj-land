@@ -39,4 +39,5 @@ Session.vim
 
 # for this project
 temp/
+.tmp/
 

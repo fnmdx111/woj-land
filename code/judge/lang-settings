@@ -1,0 +1,11 @@
+#! /usr/bin/python3
+
+from langs._utils import args, load
+
+lang_name, = args(1)
+lang_name = lang_name.lower()
+
+processor = load(lang_name)
+
+print(processor.code) # It's not ID for the language, it's a masked integer
+                      # that represents the language's various settings.
