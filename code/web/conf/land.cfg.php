@@ -1,6 +1,8 @@
 <?php
 
-final class land_conf
+include 'lang.cfg.php';
+
+class land_conf extends lang_conf
 {
     public static $web_root     = "/land";
     const UPLOAD_PATH           = "/upload/";
@@ -30,18 +32,6 @@ final class land_conf
         'admin',
         'view_src',
         'private_contest',
-        );
-
-    const LANG_UNKNOWN          = 0;
-    const LANG_C                = 1;
-    const LANG_CPP              = 2;
-    const LANG_JAVA             = 3;
-    const LANG_PASCAL           = 4;
-    public static $lang         = array(
-        self::LANG_C        => 'C',
-        self::LANG_CPP      => 'C++',
-        self::LANG_JAVA     => 'Java',
-        self::LANG_PASCAL   => 'Pascal',
         );
 
     //problems

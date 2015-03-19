@@ -29,6 +29,87 @@ for module in os.listdir('langs'):
             lang.export_rf()
 
 
-with open('langs/conf/langs.conf', 'w') as f:
+def _ln():
+    f.write('\n')
+
+def indent(n=1):
+    f.write('    ' * n)
+
+def wln(*t):
+    f.write('\n'.join(map(str, t)))
+    _ln()
+
+for id_, lang in registry.items():
+    with open('langs/conf/%d.conf' % id_, 'w') as f:
+        wln(lang.code_name,
+            lang.canonical_name,
+            lang.suffix,
+            int(lang.is_compiled_language),
+            int(lang.is_interpreted_language),
+            lang.default_src_filename,
+            lang.default_exec_filename,
+            lang.code,
+            lang.memory_limit_multiplier,
+            lang.time_limit_multiplier,
+            chr(1).join(lang.exec_cmd), # Using '\u0001' as split character,
+                                        # because space is not reliable here.
+            '')
+
+
+DEFAULT_LANG_CONST_PATH = 'langs/conf/lang.cfg.php'
+with open('langs/conf/lang.cfg.php', 'w') as f:
+    def const_name_of(obj):
+        return 'LANG_%s' % obj.code_name.upper()
+
+    wln('<?php',
+        '',
+        'class lang_conf',
+        '{',
+        '    const CONF_DIR = "%s";' % os.path.join(os.getcwd(),
+                                                    'langs',
+                                                    'conf'),
+        '    const PROCESS_SRC_DIR = "%s";' %\
+            os.path.join(os.getcwd(), 'process-source'),
+        '    const LANG_UNKNOWN = 0;')
+
     for id_, lang in registry.items():
-        f.write('%s %s\n' % (id_, lang.code_name))
+        indent()
+        wln('const %s = %d;' % (const_name_of(lang), id_))
+    wln('')
+
+    indent()
+    wln('public static $lang = array(')
+    for id_, lang in registry.items():
+        indent(2)
+        wln("self::%s => '%s'," % (const_name_of(lang),
+                                   lang.canonical_name))
+    indent()
+    wln(');', '')
+
+    indent()
+    wln('public static $extension = array(')
+    for id_, lang in registry.items():
+        indent(2)
+        wln("self::%s => '%s'," % (const_name_of(lang),
+                                   lang.suffix))
+    indent()
+    wln(');', '')
+
+    indent()
+    wln('public static $default_filename = array(')
+    for id_, lang in registry.items():
+        indent(2)
+        wln("self::%s => '%s'," % (const_name_of(lang),
+                                   lang.default_src_filename))
+    indent()
+    wln(');', '')
+
+    wln('}',
+        '',
+        '?>')
+
+print('exported lang.cfg.php')
+
+import os
+os.rename(DEFAULT_LANG_CONST_PATH,
+          '../web/conf/lang.cfg.php')
