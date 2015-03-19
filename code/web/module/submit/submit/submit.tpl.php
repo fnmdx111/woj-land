@@ -72,6 +72,8 @@ function fillSubmitForm()
     {
         pmt = 'The language of your source seems not to be supported by land, '
             + 'do you still want to submit?';
+        // disable this prompt
+        pmt = '';
     }
     else if (lang_maybe == 3) //JAVA, check 'class Main'
     {
