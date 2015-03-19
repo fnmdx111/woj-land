@@ -11,16 +11,6 @@ import os
 import importlib
 
 
-def iid():
-    n = 0
-    def _():
-        nonlocal n
-        n += 1
-        return n
-    return _
-
-iid = iid()
-
 registry = {}
 
 for module in os.listdir('langs'):
@@ -33,7 +23,7 @@ for module in os.listdir('langs'):
         lang = mod.lang
 
         # Register the languages and give them a unique id.
-        registry[iid()] = lang
+        registry[lang.id] = lang
 
         if lang.rf_enabled:
             lang.export_rf()

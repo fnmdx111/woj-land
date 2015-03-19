@@ -28,8 +28,11 @@ else:
     rf.mmap2             = -1
     rf.fstat64           = -1
 
-def_compiled_lang(canonical_name='C',
+def_compiled_lang(id_=1,
+                  canonical_name='C',
+                  suffix='c',
                   code_name='c',
-                  compile_cmd='gcc -o {target} {source} -static -w '
-                              '-lm -std=c99 -O2 -DOJ',
+                  compile_cmd=['gcc', '-o' '{target}',
+                               '{source}', '-static', '-w',
+                               '-lm', '-std=c99', '-O2', '-DOJ'],
                   **rf)
