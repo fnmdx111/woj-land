@@ -42,11 +42,9 @@ namespace judge_conf
 
     //参照Oak的设置，附加一段时间到time_limit里，不把运行时间限制得太死
     int time_limit_addtion          = 314;
-    
-    int java_time_factor            = 2;
-    
-    int java_memory_factor          = 2;
-    
+
+    std::string process_source_path = "";
+
     void load()
     {
         int n, i, j;
@@ -139,7 +137,6 @@ namespace judge_conf
     const int GIGA              = KILO * MEGA;  // 1G
 
     const int GCC_COMPILE_ERROR = 1;
-    const int PSEUDO_COMPILE_UNSUPPORTED_LANGUAGE_ERROR = 0x80000001;
 
     //退出原因
     const int EXIT_OK               = 0;
@@ -159,39 +156,9 @@ namespace judge_conf
     const int EXIT_TIMEOUT          = 36;
     const int EXIT_UNKNOWN          = 127;
 
-    const std::string languages[]    = {"unknown", "c", "c++", "java", "pascal"};
-    /**
-     * Lang code is a constant of unsigned integer as following
-     * bit 31 30 29 28 | 27 26 25 24 | 23 22 21 20 | 19 18 17 16 | 15-0
-     *     00 UU CN PC | UU UU RF CR | UU UU ST DT | UU UU CS JB | NM
-     *
-     * CN: Compilation Needed
-     * PC: Pseudo-compilation Needed
-     * UU: Unused bit
-     * CR: chroot Before Execution
-     * RF: Restricted by RF Table
-     * JB: JVM-based Language
-     * CS: CLR-based Language
-     * ST: Static-typing
-     * DT: Dynamic-typing
-     * NM: Number (A 16-bit integer is enough for numbering all the language supported, I presume.)
-     * */
-    const unsigned int LANG_UNKNOWN      = 0;
-    const unsigned int LANG_C            = 0x23200001;
-    const unsigned int LANG_CPP          = 0x23200002;
-    const unsigned int LANG_JAVA         = 0x22210003;
-    const unsigned int LANG_PASCAL       = 0x23200004;
-    const unsigned int LANG_PYTHON2      = 0x10100005;
-    const unsigned int LANG_PYTHON3      = 0x10100006;
-    const unsigned int LANG_RUBY         = 0x10100007;
-    const unsigned int LANG_SCALA        = 0x22210008;
-    const unsigned int LANG_CLOJURE      = 0x02110009;
-
-    const unsigned int COMPILATION_NEEDED = 0x20000000;
-    const unsigned int PSEUDO_COMPILATION_NEEDED = 0x10000000;
-    const unsigned int JVM_BASED_LANGUAGE = 0x00010000;
-    const unsigned int CHROOT_BEFORE_EXECUTION = 0x01000000;
-    const unsigned int RESTRICTED_BY_RF_TABLE = 0x02000000;
+    const unsigned int CHROOT_BEFORE_EXECUTION = 0x2;
+    const unsigned int RESTRICTED_BY_RF_TABLE = 0x1;
+    const int LANG_UNKNOWN = 0;
 #define LANG(WHAT) (problem::lang & judge_conf::WHAT)
 #define LANG_NOT(WHAT) ((problem::lang & judge_conf::WHAT) == 0)
 };
@@ -200,6 +167,9 @@ namespace problem
 {
     int id                  = 0;
     unsigned int lang       = 0;
+    int lang_id             = 0;
+    char lang_name[128];
+    std::string lang_exec_cmd = "";
     int time_limit          = 1000;
     int memory_limit        = 65536;
     int output_limit        = 8192;
@@ -212,6 +182,8 @@ namespace problem
     bool spj                = false;
 
     std::string uid; //会追加到日志中的唯一编号，可选
+
+    std::string langs_conf_dir = "";
 
     std::string temp_dir;
     std::string data_dir;
@@ -235,70 +207,153 @@ namespace problem
     void dump_to_log()
     {
         FM_LOG_DEBUG("--problem information--");
-        FM_LOG_DEBUG("id            %d", id);
-        FM_LOG_DEBUG("lang code     %x", lang);
-        FM_LOG_DEBUG("time_limit    %d", time_limit);
-        FM_LOG_DEBUG("memory_limit  %d", memory_limit);
-        FM_LOG_DEBUG("output_limit  %d", output_limit);
-        FM_LOG_DEBUG("spj           %s", spj ? "true" : "false");
-        FM_LOG_DEBUG("temp_dir      %s", temp_dir.c_str());
-        FM_LOG_DEBUG("data_dir      %s", data_dir.c_str());
-        FM_LOG_DEBUG("source_file   %s", source_file.c_str());
-        FM_LOG_DEBUG("data_file     %s", data_file.c_str());
+        FM_LOG_DEBUG("id             %d", lang_id);
+        FM_LOG_DEBUG("lang settings  %x", lang);
+        FM_LOG_DEBUG("time_limit     %d", time_limit);
+        FM_LOG_DEBUG("memory_limit   %d", memory_limit);
+        FM_LOG_DEBUG("output_limit   %d", output_limit);
+        FM_LOG_DEBUG("spj            %s", spj ? "true" : "false");
+        FM_LOG_DEBUG("temp_dir       %s", temp_dir.c_str());
+        FM_LOG_DEBUG("data_dir       %s", data_dir.c_str());
+        FM_LOG_DEBUG("source_file    %s", source_file.c_str());
+        FM_LOG_DEBUG("exec_file      %s", exec_file.c_str());
+        FM_LOG_DEBUG("data_file      %s", data_file.c_str());
+        FM_LOG_DEBUG("langs_conf_dir %s", langs_conf_dir.c_str());
+        FM_LOG_DEBUG("prc-src_path   %s",
+                     judge_conf::process_source_path.c_str());
         FM_LOG_DEBUG("");
     }
 };
+
+void
+read_line(FILE* fp, char* buf, size_t n)
+/**
+ * Reads a line with the limit of n characters.
+ *
+ * If n characters are already read before line ends, the rest of the line is
+ * thrown away.
+ *
+ * Users are responsible for providing the arguments that would not cause any
+ * stack overflows.
+ *
+ * If n is givin 0, then buf is ignored, and a line is read.
+ */
+{
+    size_t idx = 0;
+    for (; idx < n; ++idx) {
+        char c = fgetc(fp);
+
+        if (c == '\n') {
+            buf[idx] = '\0';
+            return; // Mission accomplished. Returning.
+        } else {
+            buf[idx] = c;
+        }
+    } // Characters exceeded before this line ends.
+
+    if (buf != NULL) {
+        buf[idx] = '\0'; // Overwrite the last read char to \0 so that it terminates.
+    }
+
+    while (fgetc(fp) != '\n'); // Read till this line ends.
+}
 
 void parse_arguments(int argc, char *argv[])
 {
     int opt;
     extern char *optarg;
 
-    while ((opt = getopt(argc, argv, "l:u:s:n:D:d:t:m:o:S")) != -1) {
+    while ((opt = getopt(argc, argv, "l:u:s:n:D:d:c:p:t:m:o:S")) != -1) {
         switch (opt) {
-            case 'u': problem::uid          = optarg;       break;
-            case 's': problem::source_file  = optarg;       break;
+            case 'u': problem::uid          = optarg; break;
+            case 's': problem::source_file  = optarg; break;
             case 'n': problem::id           = atoi(optarg); break;
-            case 'D': problem::data_dir     = optarg;       break;
-            case 'd': problem::temp_dir     = optarg;       break;
+            case 'D': problem::data_dir     = optarg; break;
+            case 'd': problem::temp_dir     = optarg; break;
             case 't': problem::time_limit   = atoi(optarg); break;
             case 'm': problem::memory_limit = atoi(optarg); break;
             case 'o': problem::output_limit = atoi(optarg); break;
-            case 'S': problem::spj          = true;         break;
-            case 'l': {
-#define DEF_LANG(LANG) else if (std::strcmp(optarg, #LANG) == 0) \
-    { problem::lang = judge_conf::LANG_ ## LANG; }
-                if (std::strcmp(optarg, "") == 0) {
-                    problem::lang = 0;
-                }
-                DEF_LANG(C)
-                DEF_LANG(CPP)
-                DEF_LANG(JAVA)
-                DEF_LANG(PASCAL)
-                DEF_LANG(PYTHON2)
-                DEF_LANG(PYTHON3)
-                DEF_LANG(RUBY)
-                DEF_LANG(SCALA)
-                DEF_LANG(CLOJURE)
-#undef DEF_LANG
-                break;
-            }
+            case 'S': problem::spj          = true; break;
+            case 'c': problem::langs_conf_dir = optarg; break;
+            case 'p': judge_conf::process_source_path = optarg; break;
+            case 'l': problem::lang_id = atoi(optarg); break;
             default:
                 FM_LOG_WARNING("unknown option provided: -%c %s", opt, optarg);
                 exit(judge_conf::EXIT_BAD_PARAM);
         }
     }
-    if (problem::lang == judge_conf::LANG_UNKNOWN) {
-        FM_LOG_WARNING("Bad language specified: %d", problem::lang);
+
+    if (problem::lang_id == judge_conf::LANG_UNKNOWN) {
+        FM_LOG_WARNING("Bad language specified: %d", problem::lang_id);
         exit(judge_conf::EXIT_BAD_PARAM);
     }
-    problem::data_file              = problem::data_dir + "/" + judge_conf::data_filename;
-    problem::exec_file              = problem::temp_dir + "/" + "a.out";
-    if(problem::lang == judge_conf::LANG_JAVA) {
-        problem::exec_file          = problem::temp_dir + "/" + "Main";
-        problem::memory_limit      *= judge_conf::java_memory_factor;
-        problem::time_limit        *= judge_conf::java_time_factor;
+    else if (problem::lang_id > 1024) {
+        // Wouldn't there be too many languages out there?
+        FM_LOG_WARNING("Bad language specified: %d", problem::lang_id);
+        exit(judge_conf::EXIT_BAD_PARAM);
     }
+
+    char fn[128]; // I assume this shall be enough.
+    if (problem::langs_conf_dir.length() == 0) {
+        problem::langs_conf_dir = "langs/conf";
+    }
+    sprintf(fn, "%s/%d.conf",
+            problem::langs_conf_dir.c_str(),
+            problem::lang_id);
+
+    FILE* fp = fopen(fn, "r");
+    if (fp == NULL) {
+        exit(judge_conf::EXIT_UNKNOWN);
+        FM_LOG_WARNING("Language definition not found. Try re-run build-langs-cache.");
+    }
+
+    char buffer[1024];
+#define EMPTY(b) (b[0] == '\0')
+
+    read_line(fp, problem::lang_name, 127);
+    // Sorry but I don't want my name too long.
+
+    read_line(fp, NULL, 0); // Canonical name is irrelevant.
+    read_line(fp, NULL, 0); // Suffix is irrelevant.
+    read_line(fp, NULL, 0); // So is the type of the language
+    read_line(fp, NULL, 0);
+
+    read_line(fp, NULL, 0); // default_src_filename, process-source will handle it.
+
+    read_line(fp, buffer, 127); // default_exec_filename, I'll take care of it here.
+
+    std::string exec_fn;
+    if (!EMPTY(buffer)) {
+        exec_fn = std::string(buffer);
+    } else {
+        exec_fn = "a.out";
+    }
+    problem::exec_file = problem::temp_dir + "/" + exec_fn;
+
+    read_line(fp, buffer, 32); // Read the security setting code of the language.
+    sscanf(buffer, "%u", &problem::lang);
+
+    read_line(fp, buffer, 10);
+    int mem_multiplier = 1;
+    int ret = sscanf(buffer, "%u", &mem_multiplier);
+    if (ret == 1) {
+        problem::memory_limit *= mem_multiplier;
+    }
+
+    read_line(fp, buffer, 10);
+    int time_multiplier = 1;
+    ret = sscanf(buffer, "%u", &time_multiplier);
+    if (ret == 1) {
+        problem::time_limit *= time_multiplier;
+    }
+
+    read_line(fp, buffer, 1023); // 1023 should suffice for a command.
+    problem::lang_exec_cmd = std::string(buffer);
+
+    fclose(fp);
+#undef EMPTY
+
+    problem::data_file              = problem::data_dir + "/" + judge_conf::data_filename;
     problem::stdout_file_compiler   = problem::temp_dir + "/" + "stdout_compiler.txt";
     problem::stderr_file_compiler   = problem::temp_dir + "/" + "stderr_compiler.txt";
     problem::stdout_file_executive  = problem::temp_dir + "/" + "stdout_executive.txt";
@@ -469,12 +524,15 @@ void set_security_option()
     FM_LOG_DEBUG("cwd: %s", cwd);
     if(LANG(CHROOT_BEFORE_EXECUTION)) { //Java不能chroot否则无法运行jvm
                                         // So do the lot of interpreted languages.
+        FM_LOG_DEBUG("chroot: yes");
         if (EXIT_SUCCESS != chroot(cwd))
         {
             FM_LOG_WARNING("chroot(%s) failed, %d: %s",
                     cwd, errno, strerror(errno));
             exit(judge_conf::EXIT_SET_SECURITY);
         }
+    } else {
+        FM_LOG_DEBUG("chroot: no");
     }
 
     //setuid
@@ -751,6 +809,10 @@ void output_result(int result, int memory_usage = 0, int time_usage = 0)
 static bool in_syscall = true;
 bool is_valid_syscall(int lang, int syscall_id, pid_t child, user_regs_struct regs)
 {
+    if (LANG_NOT(RESTRICTED_BY_RF_TABLE)) {
+        return true;
+    }
+
     // return true;
     in_syscall = !in_syscall;
     //FM_LOG_DEBUG("syscall: %d, %s, count: %d", syscall_id, in_syscall?"in":"out", RF_table[syscall_id]);

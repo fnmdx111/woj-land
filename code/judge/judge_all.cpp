@@ -54,7 +54,6 @@ int main(int argc, char *argv[], char *envp[])
  * This compilation procedure also applies to interpreted languages so that
  * minimal changes must be made to implement supports for interpreted
  * languages.
- * See also `pseudo_compile.py'
  */
 
     pid_t compiler = fork();
@@ -77,76 +76,21 @@ int main(int argc, char *argv[], char *envp[])
         }
 
         malarm(ITIMER_REAL, judge_conf::compile_time_limit);
-        switch (problem::lang)
-        {
-            case judge_conf::LANG_C:
-                FM_LOG_TRACE("start: gcc -o %s %s -static -w -lm -std=c99 -O2 -DOJ",
-                        problem::exec_file.c_str(), problem::source_file.c_str());
-                execlp("gcc", "gcc", "-o", problem::exec_file.c_str(), problem::source_file.c_str(),
-                        "-static", "-w", "-lm", "-std=c99", "-O2", "-DOJ", 
-                       NULL);
-                break;
-            
-            case judge_conf::LANG_CPP:
-                FM_LOG_TRACE("start: g++ -o %s %s -static -w -O2 -DOJ",
-                        problem::exec_file.c_str(), problem::source_file.c_str());
-                execlp("g++", "g++", "-o", problem::exec_file.c_str(), problem::source_file.c_str(),
-                        "-static", "-w", "-O2", "-DOJ", 
-                       NULL);
-                break;
-            
-            case judge_conf::LANG_JAVA:
-                FM_LOG_TRACE("start: javac %s -d %s", problem::source_file.c_str(), problem::temp_dir.c_str());
-                execlp("javac", "javac", 
-                       problem::source_file.c_str(), "-d", problem::temp_dir.c_str(),
-                       NULL);
-                break;
+        // Following are procedures for pseudo compiling sources of
+        // interpreted languages.
+        FM_LOG_TRACE("start: process-source %s %s %s %s",
+                     problem::lang_name,
+                     problem::source_file.c_str(),
+                     problem::exec_file.c_str(),
+                     problem::temp_dir.c_str());
 
-            case judge_conf::LANG_PASCAL:
-                FM_LOG_TRACE("start: fpc -o%s %s -Co -Cr -Ct -Ci",
-                        problem::exec_file.c_str(), problem::source_file.c_str());
-                execlp("fpc", "fpc", problem::source_file.c_str(),
-                       ("-o" + problem::exec_file).c_str(),
-                        "-Co", "-Cr", "-Ct", "-Ci",
-                       NULL);
-                break;
-
-            default: {
-                // Following are procedures for pseudo compiling sources of
-                // interpreted languages.
-                string lang_str = "unknown";
-                switch (problem::lang) {
-#define DEF_LANG(LANG) \
-    case judge_conf::LANG_ ## LANG: lang_str = #LANG; break;
-#define DEF_LANG2(LANG, LANG_STR) \
-    case judge_conf::LANG_ ## LANG: lang_str = #LANG_STR; break;
-                    DEF_LANG(PYTHON2)
-                    DEF_LANG(PYTHON3)
-                    DEF_LANG(RUBY)
-#undef DEF_LANG
-#undef DEF_LANG2
-                }
-
-                // Have the `lang_str' lowercased.
-                char lowercased_lang_str[128];
-                int lang_str_length = lang_str.length();
-                int i = 0;
-                for (; i < min(lang_str_length, 128); i++) {
-                    lowercased_lang_str[i] = tolower(lang_str[i]);
-                }
-                lowercased_lang_str[i] = '\0';
-
-                FM_LOG_TRACE("start: pseudo-compile %s %s %s",
-			     lowercased_lang_str,
-			     problem::source_file.c_str(),
-                             problem::exec_file.c_str());
-                execlp("./pseudo-compile", "pseudo-compile",
-                       lowercased_lang_str,
-		       problem::source_file.c_str(),
-		       problem::exec_file.c_str(),
-		       NULL);
-            }
-        }
+        execlp(judge_conf::process_source_path.c_str(),
+               "process-source",
+               problem::lang_name,
+               problem::source_file.c_str(),
+               problem::exec_file.c_str(),
+               problem::temp_dir.c_str(),
+               NULL);
 
         //如果执行到这里说明execlp出错了
         FM_LOG_WARNING("exec error");
@@ -172,12 +116,6 @@ int main(int argc, char *argv[], char *envp[])
             else if (judge_conf::GCC_COMPILE_ERROR == WEXITSTATUS(status))
             {
                 FM_LOG_TRACE("compile error");
-                output_result(judge_conf::OJ_CE);
-                exit(judge_conf::EXIT_OK);
-            }
-            else if (judge_conf::PSEUDO_COMPILE_UNSUPPORTED_LANGUAGE_ERROR
-                     == WEXITSTATUS(status)) {
-                FM_LOG_TRACE("pseudo compile error");
                 output_result(judge_conf::OJ_CE);
                 exit(judge_conf::EXIT_OK);
             }
@@ -282,6 +220,7 @@ int main(int argc, char *argv[], char *envp[])
             }
 
             FM_LOG_TRACE("begin executive: %s", problem::exec_file.c_str());
+            FM_LOG_TRACE("begin executive: %s", problem::lang_exec_cmd.c_str());
 
             //设置 memory, time, output 限制..
             set_limit(); //log_close in set_limit()
@@ -292,11 +231,35 @@ int main(int argc, char *argv[], char *envp[])
                 exit(judge_conf::EXIT_PRE_JUDGE_PTRACE);
             }
             //载入程序
-            if (LANG(JVM_BASED_LANGUAGE))
+            if (problem::lang_exec_cmd.length() == 0)
             {
-                execlp("java", "java", "-Djava.security.manager", "-Djava.security.policy==../../java.policy", "Main", NULL);
-            } else {
+                // This is a language without special execution command.
                 execl("./a.out", "a.out", NULL);
+            } else {
+                char *temp_cmd = (char*) malloc(
+                        (problem::lang_exec_cmd.length() + 1)
+                        * (sizeof(char))
+                );
+                strcpy(temp_cmd, problem::lang_exec_cmd.c_str());
+
+                char* file = NULL;
+                char* args[128]; // 128 should be enough.
+                memset(args, 0, sizeof(args));
+
+                file = args[0] = strtok(temp_cmd, "\1");
+                for (size_t idx = 1; idx < 128; ++idx) {
+                    char* arg = strtok(NULL, "\1");
+                    if (arg == NULL) {
+                        break;
+                    } else {
+                        args[idx] = arg;
+                    }
+                }
+
+                execvp(file, args);
+
+                // I don't think free(temp_cmd) is needed since the process
+                // image has been replaced by now.
             }
 
             //运行到此说明execlp出错了, 无法打日志了
@@ -310,7 +273,7 @@ int main(int argc, char *argv[], char *envp[])
             struct user_regs_struct regs;
 
             //每个case在judge之前都需要初始化rf_table
-            init_RF_table(problem::lang);
+            init_RF_table(problem::lang_name);
             FM_LOG_TRACE("start judging...");
             while (true)
             {
@@ -324,8 +287,7 @@ int main(int argc, char *argv[], char *envp[])
                 {
                     //子进程主动退出
                     //如果是JAVA返回值非0表示出错，其他语言不考虑此返回值
-                    if (problem::lang != judge_conf::LANG_JAVA
-                        || WEXITSTATUS(status) == EXIT_SUCCESS)
+                    if (WEXITSTATUS(status) == EXIT_SUCCESS)
                     {
                         //子进程返回0 (AC/PE,WA)
                         FM_LOG_TRACE("normal quit");

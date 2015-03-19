@@ -1,8 +1,12 @@
 #ifndef __RF_TABLE__
 #define __RF_TABLE__
 
+#include <stdio.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include "logger.h"
+
+#define RF_CONF_FOLDER "langs/conf/"
 
 /*
  * RF_table 每个值对应的是该syscall可被调用的次数
@@ -308,36 +312,34 @@ int RF_PYTHON2_PYTHON3_RUBY[512] =
 #endif
 
 //根据 RF_* 数组来初始化RF_table
-void init_RF_table(int lang)
+void init_RF_table(char* lang_name)
 {
-    int *p = NULL;
-    switch (lang)
-    {
-        case judge_conf::LANG_C:
-            p = RF_C;
-            break;
-        case judge_conf::LANG_CPP:
-            p = RF_CPP;
-            break;
-        case judge_conf::LANG_JAVA:
-            p = RF_JAVA;
-            break;
-        case judge_conf::LANG_PASCAL:
-            p = RF_PASCAL;
-            break;
-        case judge_conf::LANG_PYTHON2:
-        case judge_conf::LANG_PYTHON3:
-        case judge_conf::LANG_RUBY:
-            p = RF_PYTHON2_PYTHON3_RUBY;
-            break;
-        default:
-            FM_LOG_WARNING("unknown lang: %d", lang);
-            break;
+    if (strlen(lang_name) > 100) {
+        exit(3);
     }
+
+    char rf_conf_path[256];
+    memset(rf_conf_path, 0, sizeof(rf_conf_path));
+    sprintf(rf_conf_path, "%s%s_rf.conf", RF_CONF_FOLDER, lang_name);
+
+    FILE* f = fopen(rf_conf_path, "r");
+    if (!f) {
+        exit(9);
+    }
+
     memset(RF_table, 0, sizeof(RF_table));
-    for (int i = 0; p[i] >= 0; i += 2)
-    {
-        RF_table[p[i]] = p[i+1];
+
+    short syscall_id, count;
+    while (fscanf(f, "%hd %hd", &syscall_id, &count) == 2) {
+        RF_table[syscall_id] = count;
+    }
+
+    if (feof(f)) {
+        // Succeeded.
+        fclose(f);
+    } else {
+        fclose(f);
+        exit(9);
     }
 }
 

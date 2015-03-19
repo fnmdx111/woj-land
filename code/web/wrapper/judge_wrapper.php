@@ -97,22 +97,22 @@ try
     $temp_dir = wrapper_conf::TEMP_PATH . "/" . $src_id;
     $data_dir = wrapper_conf::DATA_PATH . "/" . $problem_id;
     $lang     = $source['lang'];
-    $src_file = '';
-    if ($lang != land_conf::LANG_JAVA)
-    {
+    $src_file = land_conf::$default_filename[$lang];
+    if ($src_file == '') {
         $src_file = $temp_dir . "/" . $src_id . "." . wrapper_conf::$extension[$lang];
+    } else {
+        $src_file = $temp_dir . "/" . $src_file;
     }
-    else
-    {
-        $src_file = $temp_dir . "/Main." . wrapper_conf::$extension[$lang];
-    }
+
     $cmd = wrapper_conf::JUDGE_PATH_ROOT . wrapper_conf::$judge_path;
-    $cmd .= append_arg('u', $src_id);
     $cmd .= append_arg('l', $lang);
+    $cmd .= append_arg('u', $src_id);
     $cmd .= append_arg('s', $src_file);
     $cmd .= append_arg('n', $problem_id);
     $cmd .= append_arg('D', $data_dir);
     $cmd .= append_arg('d', $temp_dir);
+    $cmd .= append_arg('c', land_conf::CONF_DIR);
+    $cmd .= append_arg('p', land_conf::PROCESS_SRC_DIR);
     $cmd .= append_arg('t', $problem['time_limit']);
     $cmd .= append_arg('m', $problem['memory_limit']);
     if ($problem['spj'] == 1)
@@ -197,7 +197,7 @@ try
 UPDATE `{$tbl_sources}` SET
     `judge_time`   = '$judge_time',
     `memory_usage` = $memory_usage,
-    `time_usage`   = $time_usage,   
+    `time_usage`   = $time_usage,
     `result`       = $result,
     `extra_info`   = '$extra_info' 
   WHERE `source_id`=$src_id
