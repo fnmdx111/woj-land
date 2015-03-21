@@ -43,7 +43,7 @@ namespace judge_conf
     //参照Oak的设置，附加一段时间到time_limit里，不把运行时间限制得太死
     int time_limit_addtion          = 314;
 
-    std::string process_source_path = "";
+    std::string process_source_path = "./process-source";
 
     void load()
     {

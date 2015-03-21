@@ -47,6 +47,7 @@ int main(int argc, char *argv[], char *envp[])
         FM_LOG_WARNING("set alarm for judge failed, %d: %s", errno, strerror(errno));
         exit(judge_conf::EXIT_VERY_FIRST);
     }
+
     signal(SIGALRM, timeout);
 
 //编译---------------------------------------------------------------------
@@ -78,7 +79,8 @@ int main(int argc, char *argv[], char *envp[])
         malarm(ITIMER_REAL, judge_conf::compile_time_limit);
         // Following are procedures for pseudo compiling sources of
         // interpreted languages.
-        FM_LOG_TRACE("start: process-source %s %s %s %s",
+        FM_LOG_TRACE("start: %s %s %s %s %s",
+                     judge_conf::process_source_path.c_str(),
                      problem::lang_name,
                      problem::source_file.c_str(),
                      problem::exec_file.c_str(),
