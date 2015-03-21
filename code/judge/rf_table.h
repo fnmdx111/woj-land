@@ -6,8 +6,6 @@
 #include <sys/syscall.h>
 #include "logger.h"
 
-#define RF_CONF_FOLDER "langs/conf/"
-
 /*
  * RF_table 每个值对应的是该syscall可被调用的次数
  *    取值有3种:
@@ -319,8 +317,9 @@ void init_RF_table(char* lang_name)
     }
 
     char rf_conf_path[256];
-    memset(rf_conf_path, 0, sizeof(rf_conf_path));
-    sprintf(rf_conf_path, "%s%s_rf.conf", RF_CONF_FOLDER, lang_name);
+    sprintf(rf_conf_path, "%s/%s_rf.conf",
+            problem::langs_conf_dir.c_str(),
+            lang_name);
 
     FILE* f = fopen(rf_conf_path, "r");
     if (!f) {
