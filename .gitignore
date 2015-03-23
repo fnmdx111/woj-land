@@ -40,4 +40,9 @@ Session.vim
 # for this project
 temp/
 .tmp/
+config.ini
+*.conf
+lang.cfg.php
+pydaemon/conf.py
+pydaemon/supervise/
 
