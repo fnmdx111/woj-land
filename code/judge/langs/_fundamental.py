@@ -95,8 +95,14 @@ class Language:
 
     def exec_(self, source, target, temp_dir_path):
         if self.exec_cmd:
-            _ = self.exec_cmd.format(source=source, target=target,
-                                     temp_dir_path=temp_dir_path).split()
+            _ = list(map(lambda sub: sub.format(source=source,
+                                                target=target,
+                                                temp_dir_path=temp_dir_path),
+                         self.exec_cmd))
+            with open('/home/wo/woj/log/exec.log', 'a') as f:
+                f.write(str(_))
+                f.write('\n')
+
             os.execlp(_[0], *_)
 
     def add_rf(self, key, value):

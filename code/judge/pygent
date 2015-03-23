@@ -17,7 +17,20 @@ mode, lang, src_file_path, exec_file_path, temp_dir_path = args(5)
 
 processor = load(lang)
 
-processor.do(src_file_path,
-             exec_file_path,
-             temp_dir_path)
+if mode == 'proc':
+    with open('/home/wo/woj/log/exec.log', 'a') as f:
+        f.write('pygent: proc, lang = %s' % lang)
+        f.write('\n')
+
+    processor.do(src_file_path,
+                 exec_file_path,
+                 temp_dir_path)
+elif mode == 'exec':
+    with open('/home/wo/woj/log/exec.log', 'a') as f:
+        f.write('pygent: exec, lang = %s' % lang)
+        f.write('\n')
+
+    processor.exec_(src_file_path,
+                    exec_file_path,
+                    temp_dir_path)
 
