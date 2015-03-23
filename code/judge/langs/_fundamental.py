@@ -61,7 +61,7 @@ class Language:
                  exec_cmd=None,
                  chroot_enabled=True,
                  rf_enabled=True):
-        self.id = id_
+        self.id_ = id_
 
         self.chroot_enabled = chroot_enabled
 

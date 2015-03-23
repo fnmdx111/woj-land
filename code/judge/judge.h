@@ -207,7 +207,7 @@ namespace problem
     void dump_to_log()
     {
         FM_LOG_DEBUG("--problem information--");
-        FM_LOG_DEBUG("id             %d", lang_id);
+        FM_LOG_DEBUG("lang id        %d", lang_id);
         FM_LOG_DEBUG("lang settings  %x", lang);
         FM_LOG_DEBUG("time_limit     %d", time_limit);
         FM_LOG_DEBUG("memory_limit   %d", memory_limit);

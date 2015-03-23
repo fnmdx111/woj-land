@@ -22,8 +22,8 @@ for module in os.listdir('langs'):
         print(mod)
         lang = mod.lang
 
-        # Register the languages and give them a unique id.
-        registry[lang.id] = lang
+        # Register the languages with a unique id.
+        registry[lang.id_] = lang
 
         if lang.rf_enabled:
             lang.export_rf()
