@@ -68,7 +68,7 @@ with open('langs/conf/lang.cfg.php', 'w') as f:
         '    const CONF_DIR = "%s";' % os.path.join(os.getcwd(),
                                                     'langs',
                                                     'conf'),
-        '    const PYGENT_DIR = "%s";' %\
+        '    const PYGENT_PATH = "%s";' %\
             os.path.join(os.getcwd(), 'pygent'),
         '    const LANG_UNKNOWN = 0;')
 

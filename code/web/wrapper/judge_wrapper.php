@@ -112,7 +112,7 @@ try
     $cmd .= append_arg('D', $data_dir);
     $cmd .= append_arg('d', $temp_dir);
     $cmd .= append_arg('c', land_conf::CONF_DIR);
-    $cmd .= append_arg('p', land_conf::PYGENT_DIR);
+    $cmd .= append_arg('p', land_conf::PYGENT_PATH);
     $cmd .= append_arg('t', $problem['time_limit']);
     $cmd .= append_arg('m', $problem['memory_limit']);
     if ($problem['spj'] == 1)
