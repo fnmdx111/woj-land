@@ -48,8 +48,9 @@ simple program like "A + B" is basically overwhelming.
 Something related to runtime environment is mandatory here.
 
 #### 2015.3.23
-After **SO MUCH** refactor, I finally managed to have my solution to the "A + B Problem"
-in C/C++/Java/Pascal/Clojure/Python2/Python3 via the web interface.
+After **SO MUCH** refactor, I finally managed to have my solution to the
+"A + B Problem" accepted in C/C++/Java/Pascal/Clojure/Python2/Python3 via the web
+interface.
 
 And of course, I have left future maintainer with interfaces to add new languages
 to WOJ. Instruction will be ready later.
