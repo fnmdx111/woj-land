@@ -2,8 +2,6 @@ from ._fundamental import def_compiled_lang, RFTable
 import platform
 
 rf = RFTable()
-rf.access                = -1
-rf.arch_prctl            = -1
 rf.brk                   = -1
 rf.close                 = -1
 rf.execve                = 1
@@ -22,9 +20,11 @@ rf.writev                = -1
 rf.readlink              = -1
 
 if platform.uname().machine == 'x86_64':
+    rf.arch_prctl        = -1
     rf.mmap              = -1
     rf.fstat             = -1
 else:   
+    rf.access            = -1
     rf.mmap2             = -1
     rf.fstat64           = -1
 
