@@ -52,7 +52,7 @@ After **SO MUCH** refactor, I finally managed to have my solution to the
 "A + B Problem" accepted in C/C++/Java/Pascal/Clojure/Python2/Python3 via the web
 interface.
 
-And of course, I have left future maintainer with interfaces to add new languages
+And of course, I have left future maintainer with interfaces to adding new languages
 to WOJ. Instruction will be ready later.
 
 **TODO** Add a tool that automatically determines the RF table for each language.
