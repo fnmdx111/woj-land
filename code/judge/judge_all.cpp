@@ -235,35 +235,20 @@ int main(int argc, char *argv[], char *envp[])
                 exit(judge_conf::EXIT_PRE_JUDGE_PTRACE);
             }
             //载入程序
-            if (problem::lang_exec_cmd.length() == 0)
+            if (LANG(CHROOT_BEFORE_EXECUTION))
             {
                 // This is a language without special execution command.
                 execl("./a.out", "a.out", NULL);
             } else {
-                char *temp_cmd = (char*) malloc(
-                        (problem::lang_exec_cmd.length() + 1)
-                        * (sizeof(char))
-                );
-                strcpy(temp_cmd, problem::lang_exec_cmd.c_str());
-
-                char* file = NULL;
-                char* args[128]; // 128 should be enough.
-                memset(args, 0, sizeof(args));
-
-                file = args[0] = strtok(temp_cmd, "\1");
-                for (size_t idx = 1; idx < 128; ++idx) {
-                    char* arg = strtok(NULL, "\1");
-                    if (arg == NULL) {
-                        break;
-                    } else {
-                        args[idx] = arg;
-                    }
-                }
-
-                execvp(file, args);
-
-                // I don't think free(temp_cmd) is needed since the process
-                // image has been replaced by now.
+                // I can believe here that this language sets chroot off.
+                execl(judge_conf::pygent_path.c_str(),
+                      "pygent",
+                      "exec",
+                      problem::lang_name,
+                      problem::source_file.c_str(),
+                      problem::exec_file.c_str(),
+                      problem::temp_dir.c_str(),
+                      NULL);
             }
 
             //运行到此说明execlp出错了, 无法打日志了
