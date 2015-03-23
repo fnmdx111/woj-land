@@ -1,5 +1,6 @@
-from ._fundamental import def_compiled_lang, RFTable
-import platform
+from ._fundamental import def_compiled_lang
+
+JAVA_SECURITY_POLICY_PATH = '/home/wo/land/code/judge/java.policy'
 
 def_compiled_lang(id_=3,
                   canonical_name='Java',
@@ -8,8 +9,8 @@ def_compiled_lang(id_=3,
                   compile_cmd=['javac', '{source}',
                                '-d', '{temp_dir_path}'],
                   exec_cmd=['java', '-Djava.security.manager',
-                            '-Djava.security.policy=/home/wo/l'
-                            'and/code/judge/java.policy',
+                            '-Djava.security.policy=%s'
+                            % JAVA_SECURITY_POLICY_PATH,
                             'Main'],
                   memory_limit_multiplier=2,
                   time_limit_multiplier=2,
