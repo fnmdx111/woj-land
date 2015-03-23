@@ -330,7 +330,7 @@ int main(int argc, char *argv[], char *envp[])
                     {
                         //子进程返回值异常
                         FM_LOG_TRACE("abnormal quit, exit_code: %d", WEXITSTATUS(status));
-                        problem::result = judge_conf::OJ_RE_JAVA;
+                        problem::result = judge_conf::OJ_RE_ABRT;
                     }
                     break;
                 }
