@@ -223,8 +223,12 @@ int main(int argc, char *argv[], char *envp[])
                 exit(judge_conf::EXIT_PRE_JUDGE);
             }
 
-            FM_LOG_TRACE("begin executive: %s", problem::exec_file.c_str());
-            FM_LOG_TRACE("begin executive: %s", problem::lang_exec_cmd.c_str());
+            if (LANG_NOT(SPECIAL_EXECUTION_COMMAND)) {
+                FM_LOG_TRACE("begin executive: %s",
+                             problem::exec_file.c_str());
+            } else {
+                FM_LOG_TRACE("special execution command: yes");
+            }
 
             //设置 memory, time, output 限制..
             set_limit(); //log_close in set_limit()
@@ -235,7 +239,7 @@ int main(int argc, char *argv[], char *envp[])
                 exit(judge_conf::EXIT_PRE_JUDGE_PTRACE);
             }
             //载入程序
-            if (LANG(CHROOT_BEFORE_EXECUTION))
+            if (LANG_NOT(SPECIAL_EXECUTION_COMMAND))
             {
                 // This is a language without special execution command.
                 execl("./a.out", "a.out", NULL);

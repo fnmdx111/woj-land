@@ -51,8 +51,6 @@ for id_, lang in registry.items():
             lang.code,
             lang.memory_limit_multiplier,
             lang.time_limit_multiplier,
-            chr(1).join(lang.exec_cmd), # Using '\u0001' as split character,
-                                        # because space is not reliable here.
             '')
 
 

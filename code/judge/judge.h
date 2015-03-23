@@ -156,7 +156,8 @@ namespace judge_conf
     const int EXIT_TIMEOUT          = 36;
     const int EXIT_UNKNOWN          = 127;
 
-    const unsigned int CHROOT_BEFORE_EXECUTION = 0x2;
+    const unsigned int SPECIAL_EXECUTION_COMMAND = 0x1 << 2;
+    const unsigned int CHROOT_BEFORE_EXECUTION = 0x1 << 1;
     const unsigned int RESTRICTED_BY_RF_TABLE = 0x1;
     const int LANG_UNKNOWN = 0;
 #define LANG(WHAT) (problem::lang & judge_conf::WHAT)
@@ -169,7 +170,6 @@ namespace problem
     unsigned int lang       = 0;
     int lang_id             = 0;
     char lang_name[128];
-    std::string lang_exec_cmd = "";
     int time_limit          = 1000;
     int memory_limit        = 65536;
     int output_limit        = 8192;
@@ -346,9 +346,6 @@ void parse_arguments(int argc, char *argv[])
     if (ret == 1) {
         problem::time_limit *= time_multiplier;
     }
-
-    read_line(fp, buffer, 1023); // 1023 should suffice for a command.
-    problem::lang_exec_cmd = std::string(buffer);
 
     fclose(fp);
 #undef EMPTY

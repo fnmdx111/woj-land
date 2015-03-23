@@ -42,14 +42,18 @@ class Language:
        to represent specific settings for a unique language.
 
        bit ... | 15 14 13 12 | 11 10 09 08 | 07 06 05 04 | 03 02 01 00
-                 UU UU UU UU   UU UU UU UU   UU UU UU UU   UU UU CR RF
+                 UU UU UU UU   UU UU UU UU   UU UU UU UU   UU SE CR RF
 
+       SE: Special Execution Command
        CR: chroot Before Execution
        RF: Restricted by RF Table
     """
 
-    MASK_CHROOT_BEFORE_EXECUTION = 0x2
+    _32 = 0xffffffff
+
+    MASK_CHROOT_BEFORE_EXECUTION = 0x1 << 1
     MASK_RESTRICTED_BY_RF_TABLE = 0x1
+    MASK_SPECIAL_EXECUTION_COMMAND = 0x1 << 2
 
     def __init__(self, id_, canonical_name, suffix, code_name=None,
                  default_src_filename='',
@@ -86,9 +90,11 @@ class Language:
         self.code = 0
 
         if rf_enabled:
-            self.code |= self.MASK_RESTRICTED_BY_RF_TABLE & 0xffffffff
+            self.code |= self.MASK_RESTRICTED_BY_RF_TABLE & self._32
         if chroot_enabled:
-            self.code |= self.MASK_CHROOT_BEFORE_EXECUTION & 0xffffffff
+            self.code |= self.MASK_CHROOT_BEFORE_EXECUTION & self._32
+        if self.exec_cmd:
+            self.code |= self.MASK_SPECIAL_EXECUTION_COMMAND & self._32
 
     def do(self, source, target, temp_dir_path):
         pass
