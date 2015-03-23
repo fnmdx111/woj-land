@@ -138,6 +138,8 @@ namespace judge_conf
 
     const int GCC_COMPILE_ERROR = 1;
 
+    const int SOURCE_SECURITY_CHECK_FAILED = 2;
+
     //退出原因
     const int EXIT_OK               = 0;
     const int EXIT_UNPRIVILEGED     = 1;

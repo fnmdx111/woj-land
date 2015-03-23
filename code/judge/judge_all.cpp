@@ -122,10 +122,15 @@ int main(int argc, char *argv[], char *envp[])
                 FM_LOG_TRACE("compile error");
                 output_result(judge_conf::OJ_CE);
                 exit(judge_conf::EXIT_OK);
+            } else if (judge_conf::SOURCE_SECURITY_CHECK_FAILED ==
+                       WEXITSTATUS(status)) {
+                FM_LOG_TRACE("pre compile source code security check failed");
+                output_result(judge_conf::OJ_RF);
+                exit(judge_conf::EXIT_OK);
             }
             else
             {
-                FM_LOG_WARNING(" compiler unknown exit status %d", WEXITSTATUS(status));
+                FM_LOG_WARNING("compiler unknown exit status %d", WEXITSTATUS(status));
                 exit(judge_conf::EXIT_COMPILE);
             }
         }

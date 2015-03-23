@@ -211,8 +211,16 @@ class InterpretedLanguage(Language):
             # Mimic the permission setting of executables compiled from gcc.
             os.chmod(target, 0o755)
 
+    def before_doing(self, source, target, temp_dir_path=''):
+        pass
+
     def do(self, source, target, temp_dir_path=''):
+        self.before_doing(source, target, temp_dir_path)
         self.make_shebang(source, target, temp_dir_path)
+        self.after_doing(source, target, temp_dir_path)
+
+    def after_doing(self, source, target, temp_dir_path=''):
+        pass
 
 
 def anchor_variable_at(anchor, name='lang', value=None):
@@ -229,7 +237,7 @@ def def_compiled_lang(id_,
                       exec_cmd=None,
                       # some compiler hooks,
                       before_compilation_hook=lambda _1, _2, _3: None,
-                      compilation_failed_hook=lambda _1, _2, _3: None,
+                      after_compilation_hook=lambda _1, _2, _3: None,
                       # some security options
                       chroot_enabled=True,
                       **rf_table):
@@ -268,7 +276,7 @@ def def_compiled_lang(id_,
             before_compilation_hook(source, target, temp_dir_path)
 
         def after_compile(self, source, target, temp_dir_path=''):
-            compilation_failed_hook(source, target, temp_dir_path)
+            after_compilation_hook(source, target, temp_dir_path)
 
     obj = SomeCompiledLang()
     anchor_variable_at(package_address_of(obj.code_name),
@@ -284,6 +292,8 @@ def def_interpreted_lang(id_,
                          code_name=None, shebang_name=None,
                          default_src_filename='',
                          default_exec_filename='',
+                         before_doing_hook=lambda _1, _2, _3: None,
+                         after_doing_hook=lambda _1, _2, _3: None,
                          exec_cmd=None,
                          **rf_table):
     class SomeInterpretedLang(InterpretedLanguage):
@@ -304,6 +314,13 @@ def def_interpreted_lang(id_,
                 self.rf_enabled = True
                 for key, val in rf_table.items():
                     self.add_rf(key, val)
+
+        def before_doing(self, source, target, temp_dir_path=''):
+            before_doing_hook(source, target, temp_dir_path)
+
+        def after_doing(self, source, target, temp_dir_path=''):
+            after_doing_hook(source, target, temp_dir_path)
+
 
     obj = SomeInterpretedLang()
     anchor_variable_at(package_address_of(obj.code_name),
