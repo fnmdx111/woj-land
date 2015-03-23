@@ -68,8 +68,8 @@ with open('langs/conf/lang.cfg.php', 'w') as f:
         '    const CONF_DIR = "%s";' % os.path.join(os.getcwd(),
                                                     'langs',
                                                     'conf'),
-        '    const PROCESS_SRC_DIR = "%s";' %\
-            os.path.join(os.getcwd(), 'process-source'),
+        '    const PYGENT_DIR = "%s";' %\
+            os.path.join(os.getcwd(), 'pygent'),
         '    const LANG_UNKNOWN = 0;')
 
     for id_, lang in registry.items():

@@ -6,14 +6,14 @@ import sys
 
 # This module acts as requests router.
 # It should be called by `execlp' with the following arguments
-# lang_name src_file_path exec_file_path temp_dir_path
+# mode lang_name src_file_path exec_file_path temp_dir_path
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 6:
     # In total, there are five elements in `sys.argv'
     sys.exit(0)
 
 
-lang, src_file_path, exec_file_path, temp_dir_path = args(4)
+mode, lang, src_file_path, exec_file_path, temp_dir_path = args(5)
 
 processor = load(lang)
 

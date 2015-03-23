@@ -79,15 +79,17 @@ int main(int argc, char *argv[], char *envp[])
         malarm(ITIMER_REAL, judge_conf::compile_time_limit);
         // Following are procedures for pseudo compiling sources of
         // interpreted languages.
-        FM_LOG_TRACE("start: %s %s %s %s %s",
-                     judge_conf::process_source_path.c_str(),
+        FM_LOG_TRACE("start: %s %s %s %s %s %s",
+                     judge_conf::pygent_path.c_str(),
+                     "proc",
                      problem::lang_name,
                      problem::source_file.c_str(),
                      problem::exec_file.c_str(),
                      problem::temp_dir.c_str());
 
-        execlp(judge_conf::process_source_path.c_str(),
-               "process-source",
+        execlp(judge_conf::pygent_path.c_str(),
+               "pygent",
+               "proc",
                problem::lang_name,
                problem::source_file.c_str(),
                problem::exec_file.c_str(),

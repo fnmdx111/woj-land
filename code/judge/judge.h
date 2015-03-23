@@ -43,7 +43,7 @@ namespace judge_conf
     //参照Oak的设置，附加一段时间到time_limit里，不把运行时间限制得太死
     int time_limit_addtion          = 314;
 
-    std::string process_source_path = "./process-source";
+    std::string pygent_path = "./pygent";
 
     void load()
     {
@@ -219,8 +219,8 @@ namespace problem
         FM_LOG_DEBUG("exec_file      %s", exec_file.c_str());
         FM_LOG_DEBUG("data_file      %s", data_file.c_str());
         FM_LOG_DEBUG("langs_conf_dir %s", langs_conf_dir.c_str());
-        FM_LOG_DEBUG("prc-src_path   %s",
-                     judge_conf::process_source_path.c_str());
+        FM_LOG_DEBUG("pygent_path    %s",
+                     judge_conf::pygent_path.c_str());
         FM_LOG_DEBUG("");
     }
 };
@@ -275,7 +275,7 @@ void parse_arguments(int argc, char *argv[])
             case 'o': problem::output_limit = atoi(optarg); break;
             case 'S': problem::spj          = true; break;
             case 'c': problem::langs_conf_dir = optarg; break;
-            case 'p': judge_conf::process_source_path = optarg; break;
+            case 'p': judge_conf::pygent_path = optarg; break;
             case 'l': problem::lang_id = atoi(optarg); break;
             default:
                 FM_LOG_WARNING("unknown option provided: -%c %s", opt, optarg);
@@ -318,7 +318,7 @@ void parse_arguments(int argc, char *argv[])
     read_line(fp, NULL, 0); // So is the type of the language
     read_line(fp, NULL, 0);
 
-    read_line(fp, NULL, 0); // default_src_filename, process-source will handle it.
+    read_line(fp, NULL, 0); // default_src_filename, pygent will handle it.
 
     read_line(fp, buffer, 127); // default_exec_filename, I'll take care of it here.
 
