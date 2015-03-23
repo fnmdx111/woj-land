@@ -27,7 +27,7 @@ rf.set_robust_list = -1
 rf.set_tid_address = -1
 rf.sigaltstack = -1
 
-def_interpreted_lang(id_=4,
+def_interpreted_lang(id_=6,
                      canonical_name='Python3',
                      suffix='py',
                      memory_limit_multiplier=2,

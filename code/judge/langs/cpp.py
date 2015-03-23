@@ -5,7 +5,7 @@ rf.access = -1
 rf.arch_prctl = -1
 
 
-def_compiled_lang(id_=6,
+def_compiled_lang(id_=2,
                   canonical_name='C++',
                   code_name='cpp',
                   suffix='cpp',

@@ -3,7 +3,7 @@ from .java import JAVA_SECURITY_POLICY_PATH
 
 CLJ_JAR_PATH = '/home/wo/clojure-1.6.0/clojure-1.6.0.jar'
 
-def_interpreted_lang(id_=5,
+def_interpreted_lang(id_=7,
                      canonical_name='Clojure',
                      suffix='clj',
                      exec_cmd=['java', '-cp', CLJ_JAR_PATH,

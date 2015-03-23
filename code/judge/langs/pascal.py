@@ -19,7 +19,7 @@ rf.uname = -1
 rf.write = -1
 rf.writev = -1
 
-def_compiled_lang(id_=7,
+def_compiled_lang(id_=4,
                   canonical_name='Pascal',
                   suffix='pas',
                   compile_cmd=['fpc', '{source}', '-o{target}',
