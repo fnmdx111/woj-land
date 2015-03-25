@@ -312,12 +312,16 @@ void parse_arguments(int argc, char *argv[])
     char buffer[1024];
 #define EMPTY(b) (b[0] == '\0')
 
+    char _buf_is_compiled_language[2];
+    int is_compiled_language;
+
     read_line(fp, problem::lang_name, 127);
     // Sorry but I don't want my name too long.
 
     read_line(fp, NULL, 0); // Canonical name is irrelevant.
-    read_line(fp, NULL, 0); // Suffix is irrelevant.
-    read_line(fp, NULL, 0); // So is the type of the language
+    read_line(fp, NULL, 0); // File extension is irrelevant.
+    read_line(fp, _buf_is_compiled_language, 1);
+    is_compiled_language = atoi(_buf_is_compiled_language);
     read_line(fp, NULL, 0);
 
     read_line(fp, NULL, 0); // default_src_filename, pygent will handle it.
@@ -347,6 +351,16 @@ void parse_arguments(int argc, char *argv[])
     ret = sscanf(buffer, "%u", &time_multiplier);
     if (ret == 1) {
         problem::time_limit *= time_multiplier;
+    }
+
+    if (is_compiled_language) {
+        read_line(fp, buffer, 10);
+        int compile_time_limit_multiplier = 1;
+        ret = sscanf(buffer, "%u", &compile_time_limit_multiplier);
+        if (ret == 1) {
+            judge_conf::compile_time_limit *=
+                compile_time_limit_multiplier;
+        }
     }
 
     fclose(fp);

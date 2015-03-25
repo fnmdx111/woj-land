@@ -51,6 +51,8 @@ for id_, lang in registry.items():
             lang.code,
             lang.memory_limit_multiplier,
             lang.time_limit_multiplier,
+            lang.compile_time_limit_multiplier
+            if lang.is_compiled_language else 1,
             '')
 
 

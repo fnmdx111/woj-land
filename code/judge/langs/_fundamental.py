@@ -137,6 +137,7 @@ class CompiledLanguage(Language):
                  compile_cmd,
                  memory_limit_multiplier=1,
                  time_limit_multiplier=1,
+                 compile_time_limit_multiplier=1,
                  default_src_filename='',
                  default_exec_filename='',
                  exec_cmd=None,
@@ -158,6 +159,7 @@ class CompiledLanguage(Language):
         )
 
         self.compile_cmd = compile_cmd
+        self.compile_time_limit_multiplier = compile_time_limit_multiplier
 
     def before_compile(self, source, target, temp_dir_path=''):
         pass
@@ -232,6 +234,7 @@ def package_address_of(name):
 def def_compiled_lang(id_,
                       canonical_name, ext, compile_cmd, code_name=None,
                       memory_limit_multiplier=1, time_limit_multiplier=1,
+                      compile_time_limit_multiplier=1,
                       default_src_filename='',
                       default_exec_filename='',
                       exec_cmd=None,
@@ -252,6 +255,7 @@ def def_compiled_lang(id_,
                 compile_cmd=compile_cmd,
                 memory_limit_multiplier=memory_limit_multiplier,
                 time_limit_multiplier=time_limit_multiplier,
+                compile_time_limit_multiplier=compile_time_limit_multiplier,
                 default_src_filename=default_src_filename,
                 default_exec_filename=default_exec_filename,
                 exec_cmd=exec_cmd,
