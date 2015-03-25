@@ -205,7 +205,7 @@ class InterpretedLanguage(Language):
 
     def make_shebang(self, source, target, temp_dir_path=''):
         with open(source, 'r') as src, open(target, 'w') as tgt:
-            tgt.write('#! /usr/bin/%s\n\n' % self.shebang_name)
+            tgt.write('#! /usr/bin/env %s\n\n' % self.shebang_name)
             tgt.write(src.read())
 
             # Mimic the permission setting of executables compiled from gcc.
