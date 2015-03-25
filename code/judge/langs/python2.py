@@ -29,7 +29,7 @@ rf.sigaltstack = -1
 
 def_interpreted_lang(id_=5,
                      canonical_name='Python2',
-                     suffix='py',
+                     ext='py',
                      memory_limit_multiplier=2,
                      time_limit_multiplier=2,
                      **rf)

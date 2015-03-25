@@ -55,7 +55,7 @@ class Language:
     MASK_RESTRICTED_BY_RF_TABLE = 0x1
     MASK_SPECIAL_EXECUTION_COMMAND = 0x1 << 2
 
-    def __init__(self, id_, canonical_name, suffix, code_name=None,
+    def __init__(self, id_, canonical_name, ext, code_name=None,
                  default_src_filename='',
                  default_exec_filename='',
                  memory_limit_multiplier=1,
@@ -73,7 +73,7 @@ class Language:
         self.rf = RFTable()
 
         self.canonical_name = canonical_name
-        self.suffix = suffix
+        self.ext = ext
         self.code_name = code_name or canonical_name
         self.code_name = self.code_name.lower()
         self.default_src_filename = default_src_filename
@@ -133,7 +133,7 @@ class Language:
 
 class CompiledLanguage(Language):
     def __init__(self, id_,
-                 canonical_name, suffix, code_name,
+                 canonical_name, ext, code_name,
                  compile_cmd,
                  memory_limit_multiplier=1,
                  time_limit_multiplier=1,
@@ -147,7 +147,7 @@ class CompiledLanguage(Language):
             canonical_name=canonical_name,
             memory_limit_multiplier=memory_limit_multiplier,
             time_limit_multiplier=time_limit_multiplier,
-            suffix=suffix,
+            ext=ext,
             code_name=code_name,
             default_src_filename=default_src_filename,
             default_exec_filename=default_exec_filename,
@@ -177,7 +177,7 @@ class CompiledLanguage(Language):
 
 class InterpretedLanguage(Language):
     def __init__(self, id_,
-                 canonical_name, suffix, code_name, shebang_name=None,
+                 canonical_name, ext, code_name, shebang_name=None,
                  memory_limit_multiplier=1,
                  time_limit_multiplier=1,
                  default_src_filename='',
@@ -189,7 +189,7 @@ class InterpretedLanguage(Language):
                              canonical_name=canonical_name,
                              memory_limit_multiplier=memory_limit_multiplier,
                              time_limit_multiplier=time_limit_multiplier,
-                             suffix=suffix,
+                             ext=ext,
                              code_name=code_name,
                              default_src_filename=default_src_filename,
                              default_exec_filename=default_exec_filename,
@@ -230,7 +230,7 @@ def package_address_of(name):
     return 'langs.%s' % name
 
 def def_compiled_lang(id_,
-                      canonical_name, suffix, compile_cmd, code_name=None,
+                      canonical_name, ext, compile_cmd, code_name=None,
                       memory_limit_multiplier=1, time_limit_multiplier=1,
                       default_src_filename='',
                       default_exec_filename='',
@@ -247,7 +247,7 @@ def def_compiled_lang(id_,
             super(SomeCompiledLang, self).__init__(
                 id_,
                 canonical_name,
-                suffix,
+                ext,
                 code_name,
                 compile_cmd=compile_cmd,
                 memory_limit_multiplier=memory_limit_multiplier,
@@ -286,7 +286,7 @@ def def_compiled_lang(id_,
 
 
 def def_interpreted_lang(id_,
-                         canonical_name, suffix,
+                         canonical_name, ext,
                          memory_limit_multiplier=1,
                          time_limit_multiplier=1,
                          code_name=None, shebang_name=None,
@@ -301,7 +301,7 @@ def def_interpreted_lang(id_,
         def __init__(self):
             super(SomeInterpretedLang, self).__init__(
                 id_,
-                canonical_name, suffix, code_name, shebang_name,
+                canonical_name, ext, code_name, shebang_name,
                 memory_limit_multiplier=memory_limit_multiplier,
                 time_limit_multiplier=time_limit_multiplier,
                 default_src_filename=default_src_filename,

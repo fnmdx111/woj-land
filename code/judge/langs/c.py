@@ -30,7 +30,7 @@ else:
 
 def_compiled_lang(id_=1,
                   canonical_name='C',
-                  suffix='c',
+                  ext='c',
                   code_name='c',
                   compile_cmd=['gcc', '-o' '{target}',
                                '{source}', '-static', '-w',

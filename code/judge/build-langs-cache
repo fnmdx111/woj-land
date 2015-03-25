@@ -43,7 +43,7 @@ for id_, lang in registry.items():
     with open('langs/conf/%d.conf' % id_, 'w') as f:
         wln(lang.code_name,
             lang.canonical_name,
-            lang.suffix,
+            lang.ext,
             int(lang.is_compiled_language),
             int(lang.is_interpreted_language),
             lang.default_src_filename,
@@ -89,7 +89,7 @@ with open('langs/conf/lang.cfg.php', 'w') as f:
     for id_, lang in registry.items():
         indent(2)
         wln("self::%s => '%s'," % (const_name_of(lang),
-                                   lang.suffix))
+                                   lang.ext))
     indent()
     wln(');', '')
 

@@ -21,7 +21,7 @@ rf.writev = -1
 
 def_compiled_lang(id_=4,
                   canonical_name='Pascal',
-                  suffix='pas',
+                  ext='pas',
                   compile_cmd=['fpc', '{source}', '-o{target}',
                                '-Co', '-Cr', '-Ct', '-Ci'],
                   **rf)

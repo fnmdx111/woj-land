@@ -4,7 +4,7 @@ JAVA_SECURITY_POLICY_PATH = '/home/wo/land/code/judge/java.policy'
 
 def_compiled_lang(id_=3,
                   canonical_name='Java',
-                  suffix='java',
+                  ext='java',
                   code_name='java',
                   compile_cmd=['javac', '{source}',
                                '-d', '{temp_dir_path}'],

@@ -5,7 +5,7 @@ CLJ_JAR_PATH = '/home/wo/clojure-1.6.0/clojure-1.6.0.jar'
 
 def_interpreted_lang(id_=7,
                      canonical_name='Clojure',
-                     suffix='clj',
+                     ext='clj',
                      exec_cmd=['java', '-cp', CLJ_JAR_PATH,
                                'clojure.main', '{source}',
                                '-Djava.security.manager',
