@@ -6,6 +6,7 @@ import argparse
 import multiprocessing
 from langs._utils import load
 from collections import Counter
+from langs.colors import *
 
 _pj = os.path.join
 
@@ -89,8 +90,8 @@ def syscall_recorder_target(pn, src, line):
                                    pn,
                                    line))
 
-    print('%s: executing: strace.py -o %s -- %s'
-            % (os.getpid(),
+    print('%s: executing: strace.py -o %s -- %s.'
+            % (bgreen(str(os.getpid())),
                syscall_output_fn,
                ' '.join(cmd)),
           file=sys.stderr)
@@ -111,10 +112,10 @@ def gather_around_syscalls(threshold=args.rf_threshold,
         idx = 1
         while True:
             try:
-                with open('%s.%s.%s.syscalls' % (args.lang,
-                                                 pn,
-                                                 idx),
-                          'r') as f:
+                fp = _pj(args.temp_dir,
+                         '%s.%s.%s.syscalls' % (args.lang, pn, idx))
+                with open(fp, 'r') as f:
+                    print('Accumulating %s...' % bblue(fp))
                     _sc = Counter()
                     for line in f:
                         try:
@@ -137,10 +138,10 @@ def gather_around_syscalls(threshold=args.rf_threshold,
     for syscall, real in sorted(syscalls.items()):
         count = real if real < threshold else -1
         if syscall in white_list:
-            real = 'white list'
-        print('%s\t\t% 3d %s' % (syscall,
-                                   count,
-                                   ('(%s)' % real) if count < 0 else ''))
+            real = bwhite('white list')
+        print('%s\t\t% 3d %s' % ((bgreen if count < 0 else bred)(syscall),
+                                 count,
+                                 ('(%s)' % real) if count < 0 else ''))
 
     for syscall in syscalls:
         if syscalls[syscall] > threshold:
@@ -154,7 +155,6 @@ def generate_rf_conf(syscalls):
     import platform
 
     rf_conf_path = _pj(args.lang_conf_dir, '%s_rf.py' % args.lang)
-    print('writing rf conf to %s' % rf_conf_path)
 
     with open(rf_conf_path, 'w') as f:
         def _w(n=''):
@@ -178,6 +178,8 @@ def generate_rf_conf(syscalls):
         for syscall, count in sorted(syscalls.items()):
             _w('rf.%s = %d' % (syscall, count))
 
+    print('Exported rf conf to %s.' % bblue(rf_conf_path))
+
 
 if __name__ == '__main__':
     if not args.analyze_cached_syscalls:
@@ -195,7 +197,7 @@ if __name__ == '__main__':
                 tracer.start()
                 tracer.join()
 
-        print('tracer out, data should\'ve been gathered')
+        print('Tracer out, data should\'ve been gathered.')
 
     sc = gather_around_syscalls()
 

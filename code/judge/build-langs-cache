@@ -9,12 +9,14 @@ AND DO NOT MODIFY THIS SCRIPT!!!"""
 
 import os
 import importlib
+from langs.colors import *
 
 
 registry = {}
 
 for module in os.listdir('langs'):
-    if (module not in ['__init__.py', '_fundamental.py', '_utils.py']
+    if (module not in ['__init__.py', '_fundamental.py', '_utils.py',
+                       'colors.py']
     and module.endswith('.py')):
         if module.endswith('rf.py'):
             continue
@@ -22,7 +24,7 @@ for module in os.listdir('langs'):
         module_name = module[:-3]
 
         mod = importlib.import_module('langs.%s' % module_name)
-        print(mod)
+        print(green(str(mod)))
         lang = mod.lang
 
         # Register the languages with a unique id.
@@ -111,7 +113,7 @@ with open('langs/conf/lang.cfg.php', 'w') as f:
         '',
         '?>')
 
-print('exported lang.cfg.php')
+print(bblue('exported lang.cfg.php'))
 
 import os
 os.rename(DEFAULT_LANG_CONST_PATH,
