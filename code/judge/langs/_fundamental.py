@@ -85,7 +85,11 @@ class Language:
         self.memory_limit_multiplier = memory_limit_multiplier
         self.time_limit_multiplier = time_limit_multiplier
 
-        self.exec_cmd = exec_cmd or []
+        if exec_cmd:
+            self.exec_cmd = exec_cmd
+            self._syscall_recorder_special_exec_cmd = True
+        else:
+            self.exec_cmd = []
 
         self.code = 0
 
@@ -201,6 +205,8 @@ class InterpretedLanguage(Language):
                              chroot_enabled=False)
 
         self.shebang_name = shebang_name or self.code_name
+
+        self._syscall_recorder_raw_exec = True
 
         if not self.shebang_name:
             sys.exit(-1)

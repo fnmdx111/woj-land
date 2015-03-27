@@ -16,6 +16,9 @@ registry = {}
 for module in os.listdir('langs'):
     if (module not in ['__init__.py', '_fundamental.py', '_utils.py']
     and module.endswith('.py')):
+        if module.endswith('rf.py'):
+            continue
+
         module_name = module[:-3]
 
         mod = importlib.import_module('langs.%s' % module_name)

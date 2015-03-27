@@ -1,0 +1,203 @@
+#! /usr/bin/env python3
+
+import sys
+import os
+import argparse
+import multiprocessing
+from langs._utils import load
+from collections import Counter
+
+_pj = os.path.join
+
+parser = argparse.ArgumentParser()
+parser.add_argument('lang', help='name of the language you need to record'
+                                 ' the syscalls')
+parser.add_argument('data_dir', help='directory of the data of the problem')
+parser.add_argument('temp_dir', help='temporary directory')
+parser.add_argument('sources', nargs='+', help='paths of one or more'
+                                               ' sources')
+parser.add_argument('-t', '--target', help='target filename',
+                    default='a.out')
+parser.add_argument('-n', '--problem-numbers', help='one or more '
+                                                    'problem numbers',
+                    default='1001', nargs='+')
+parser.add_argument('-r', '--raw-execution-mode',
+                    help='the shebang way doesn\'t work here, using '
+                    'the raw way',
+                    action='store_true',
+                    dest='raw_exec')
+parser.add_argument('-s', '--special-execution-command',
+                    help='the language has special execution command',
+                    dest='special_exec_cmd', action='store_true')
+parser.add_argument('-l', '--lang_conf-dir',
+                    help='path of the lang_conf directory',
+                    default=os.getcwd())
+parser.add_argument('-f', '--rf-threshold',
+                    help='threshold past which syscall will be marked as'
+                    ' -1', type=int,
+                    default=5)
+parser.add_argument('-w', '--white-list',
+                    help='syscalls on white list will be marked as -1',
+                    default=('read', 'write', 'close'),
+                    nargs='+')
+parser.add_argument('-c', '--cases',
+                    help='used when analyzing cached syscalls results',
+                    nargs='+')
+parser.add_argument('-a', '--analyze-cached_syscalls',
+                    action='store_true')
+args = parser.parse_args()
+
+lang_obj = load(args.lang)
+if hasattr(lang_obj, '_syscall_recorder_special_exec_cmd'):
+    args.special_exec_cmd = True
+elif hasattr(lang_obj, '_syscall_recorder_raw_exec'):
+    args.raw_exec = True
+
+target = _pj(args.temp_dir, args.target)
+
+JUDGE_DIR = os.path.abspath(_pj(os.getcwd(), '..', '..'))
+
+
+def syscall_recorder_target(pn, src, line):
+    stdin = open(_pj(args.data_dir, pn, '%s.in' % line), 'r')
+    sys.stdin = stdin
+    os.dup2(stdin.fileno(), 0)
+
+    stdout = open(_pj(args.temp_dir,
+                      '%s_%s.out' % (pn, line)),
+                  'w')
+    sys.stdout = stdout
+    os.dup2(stdout.fileno(), 1)
+    # There's actually no point in gathering outputs of users'
+    # programs.
+
+    if args.special_exec_cmd:
+        cmd = list(map(
+            lambda sub: sub.format(source=src,
+                                   target=args.target,
+                                   temp_dir_path=args.temp_dir),
+            lang_obj.exec_cmd
+        ))
+    elif args.raw_exec:
+        cmd = [args.lang, src]
+    else:
+        cmd = [target]
+
+    syscall_output_fn = _pj(
+            args.temp_dir,
+            '%s.%s.%s.syscalls' % (args.lang,
+                                   pn,
+                                   line))
+
+    print('%s: executing: strace.py -o %s -- %s'
+            % (os.getpid(),
+               syscall_output_fn,
+               ' '.join(cmd)),
+          file=sys.stderr)
+
+    os.execlp('strace.py', 'strace.py',
+              '-o', syscall_output_fn,
+              '--',
+              *cmd)
+
+
+def gather_around_syscalls(threshold=args.rf_threshold,
+                           white_list=args.white_list):
+    syscalls = Counter()
+    for item in white_list:
+        syscalls[item] += threshold
+
+    for pn in args.problem_numbers:
+        idx = 1
+        while True:
+            try:
+                with open('%s.%s.%s.syscalls' % (args.lang,
+                                                 pn,
+                                                 idx),
+                          'r') as f:
+                    _sc = Counter()
+                    for line in f:
+                        try:
+                            _sc[line[:line.index('(')]] += 1
+                        except ValueError:
+                            pass
+
+                for _syscall in _sc:
+                    syscalls[_syscall] = max(_sc[_syscall],
+                                             syscalls[_syscall])
+                    # If the count of certain syscall in this case is
+                    # bigger than that that we have stored in `syscalls`,
+                    # update it.
+            except FileNotFoundError:
+                break
+
+            idx += 1
+
+    print('Here are the syscalls table:')
+    for syscall, real in sorted(syscalls.items()):
+        count = real if real < threshold else -1
+        if syscall in white_list:
+            real = 'white list'
+        print('%s\t\t% 3d %s' % (syscall,
+                                   count,
+                                   ('(%s)' % real) if count < 0 else ''))
+
+    for syscall in syscalls:
+        if syscalls[syscall] > threshold:
+            syscalls[syscall] = -1
+
+    return syscalls
+
+
+def generate_rf_conf(syscalls):
+    import datetime
+    import platform
+
+    rf_conf_path = _pj(args.lang_conf_dir, '%s_rf.py' % args.lang)
+    print('writing rf conf to %s' % rf_conf_path)
+
+    with open(rf_conf_path, 'w') as f:
+        def _w(n=''):
+            print(n, file=f)
+
+        _w('# This is restricted function table for %s generated by'
+           ' syscall_recorder.' % args.lang)
+        _w('# It is intended only as a recommended RF table for your'
+           ' security settings.')
+        uname = platform.uname()
+        _w('# Generated on %s; %s' % (' '.join([uname.node,
+                                                uname.release,
+                                                uname.machine]),
+                                      datetime.datetime.now().isoformat()))
+
+        _w()
+        _w('from ._fundamental import RFTable')
+        _w()
+        _w('rf = RFTable()')
+        _w()
+        for syscall, count in sorted(syscalls.items()):
+            _w('rf.%s = %d' % (syscall, count))
+
+
+if __name__ == '__main__':
+    if not args.analyze_cached_syscalls:
+        for pn, src in zip(args.problem_numbers, args.sources):
+            lang_obj.do(src, target, args.temp_dir)
+
+            for line in open(_pj(args.data_dir, pn, 'data.txt'), 'r'):
+                line = line.strip()
+
+                if not line.isdigit():
+                    continue
+
+                tracer = multiprocessing.Process(target=syscall_recorder_target,
+                                                 args=(pn, src, line))
+                tracer.start()
+                tracer.join()
+
+        print('tracer out, data should\'ve been gathered')
+
+    sc = gather_around_syscalls()
+
+    generate_rf_conf(sc)
+
