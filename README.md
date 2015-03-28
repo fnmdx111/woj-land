@@ -58,6 +58,23 @@ to WOJ. Instruction will be ready later.
 **TODO** Add a tool that automatically determines the RF table for each language.
 And I'll try to export a patch and apply it to upstream server.
 
+#### 2015.3.27
+A tool named `syscall_recorder` is ready. Check out `syscall_recorder -h` for more
+details. This tools utilizes `strace.py` from `python-ptrace` to record all the
+syscalls your target calls. An example call to `syscall_recorder` would be
+
+    ./syscall_recorder python3 /home/user/woj/data/ . target1.py target2.py -n 1001
+     1002 -l langs/ -f 5 -w read write close
+
+After running this, `syscall_recorder` will record all the syscalls during the
+execution of target1.py running 1001 and target2.py running 1002. And a syscall table
+will be generated, in which each syscall will be assigned a number which shows how
+many times this syscall has been called. If this number exceeds a threshold of 5 (given
+by `-f`), it will be changed to -1, which means this syscall can be called infinite
+times without triggering the `RF` alarm. Syscalls on white list will automatically
+be given -1. `syscall_recorder` will generate a `your_lang_rf.py` according to the
+information it has gathered. And users can directly `from your_lang_rf import rf` to
+facilitate their security settings.
 
 Contact
 ----
