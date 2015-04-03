@@ -4,7 +4,7 @@ try:
 except ImportError:
     rf = {}
 
-def_interpreted_lang(id_=9,
+def_interpreted_lang(id_=8,
                      canonical_name='Lua',
                      ext='lua',
                      **rf)
