@@ -78,7 +78,7 @@ facilitate their security settings.
 
 #### 2015.4.7
 With a lot of efforts, DJE finally came into being. Check out the sub-README.md to
-learn more. Remember that, starting small really helps.
+learn more. Remember, that starting small really helps.
 
 Contact
 ----

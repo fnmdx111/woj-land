@@ -17,7 +17,7 @@ Requirements
 
 * Python 3 (developed and tested under Python 3.4)
 * libzmq 4.1.0 and pyzmq 14.5.0
-* woj judge test suite
+* woj-land judge suite
 
 
 Howto
