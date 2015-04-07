@@ -1,0 +1,155 @@
+#! /usr/bin/python3
+
+"""
+Heartbeat daemon executable.
+
+This daemon has two affiliated processes, one for recording nodes alive,
+another one for notifying master about node table update. The mainloop of this
+module listens all heartbeats from all the slave nodes and transmit them to the
+recorder process.
+"""
+
+from utils import logger as logger_
+
+logger = logger_()
+
+debug_ = logger.debug
+info_ = logger.info
+warning_ = logger.warning
+critical_ = logger.critical
+error_ = logger.error
+
+
+import zmq
+from utils import msg as msg_, get_local_ip
+from config import MASTER_ADDR, HEARTBEAT_DAEMON_PORT, HEARTBEAT_MESSAGE_PORT,\
+    NODE_TABLE_REFRESH_INTERVAL, NODE_ALIVENESS_INTERVAL
+import datetime as dt
+import multiprocessing as mp
+
+
+port = HEARTBEAT_MESSAGE_PORT
+
+local_ip = get_local_ip()
+
+
+ctx = zmq.Context()
+
+heartbeat_socket = ctx.socket(zmq.SUB)
+heartbeat_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+heartbeat_socket.bind('tcp://%s:%s' % (local_ip, HEARTBEAT_DAEMON_PORT))
+
+info_('heartbeat daemon alive')
+
+
+def list_nodes(nodes, addr=None, context=None):
+    nd = nodes.copy()
+
+    now = dt.datetime.now()
+    delta = dt.timedelta(seconds=NODE_ALIVENESS_INTERVAL)
+
+    d = {}
+    for item, ts in nd.items():
+        if now - ts <= delta:
+            d[item] = 1  # yes, a magical number: 1
+        else:
+            del nodes[item]
+
+    if addr:
+        _socket = context.socket(zmq.PUSH)
+        _socket.connect(addr)
+        _socket.send_json(msg_(act='nodes update',
+                               payload=d))
+        _socket.close()
+
+
+def hbd_reception():
+    log = logger_()
+
+    nodes_ = {}
+
+    hbd_r_ctx = zmq.Context()
+
+    poller = zmq.Poller()
+
+    msg_socket = hbd_r_ctx.socket(zmq.PULL)
+    msg_socket.bind('tcp://%s:%s' % (local_ip, HEARTBEAT_MESSAGE_PORT))
+
+    poller.register(msg_socket, zmq.POLLIN)
+    while True:
+        if poller.poll(3 * 1000):  # this poll does nothing special
+            msg = msg_socket.recv_json()
+
+            assert 'act' in msg
+            act = msg['act']
+
+            if act == 'hbt':
+                nodes_[msg['addr']] = dt.datetime(*msg['timestamp'][:-2])
+                log.debug('hbt packet of %s received at %s',
+                          msg['addr'],
+                          msg['timestamp'])
+            elif act == 'list nodes':
+                if 'addr' in msg:
+                    addr = msg['addr']
+                else:
+                    addr = MASTER_ADDR
+
+                list_nodes(nodes_,
+                           addr=addr,
+                           context=hbd_r_ctx)
+
+mp.Process(target=hbd_reception, daemon=True).start()
+
+
+def nodes_updater():
+    nu_ctx = zmq.Context()
+
+    import signal
+
+    def send_nodes(signum, _):
+        if signum != signal.SIGALRM:
+            return
+
+        ret_socket = nu_ctx.socket(zmq.PULL)
+        ret_port = ret_socket.bind_to_random_port('tcp://%s' % local_ip)
+
+        msg_socket = nu_ctx.socket(zmq.PUSH)
+        msg_socket.connect('tcp://%s:%s' % (local_ip, HEARTBEAT_MESSAGE_PORT))
+        msg_socket.send_json(msg_(act='list nodes',
+                                  addr='tcp://%s:%s' % (local_ip, ret_port)))
+        msg_socket.close()
+
+        poller = zmq.Poller()
+        poller.register(ret_socket, zmq.POLLIN)
+        if poller.poll(3 * 1000):
+            ret = ret_socket.recv_json()
+            ret_socket.close()
+
+            assert 'act' in ret
+
+            if ret['act'] == 'nodes update':
+                master_socket = nu_ctx.socket(zmq.PUSH)
+                master_socket.connect(MASTER_ADDR)
+                master_socket.send_json(ret)
+
+        signal.alarm(NODE_TABLE_REFRESH_INTERVAL)
+
+    signal.signal(signal.SIGALRM, send_nodes)
+    signal.alarm(NODE_TABLE_REFRESH_INTERVAL)
+
+    while True:
+        pass
+
+mp.Process(target=nodes_updater, daemon=True).start()
+
+
+msg_socket = ctx.socket(zmq.PUSH)
+msg_socket.connect('tcp://%s:%s' % (local_ip, HEARTBEAT_MESSAGE_PORT))
+
+while True:
+    msg = heartbeat_socket.recv_json()
+    info_('heartbeat at %s', msg['addr'])
+
+    msg_socket.send_json(msg_(act='hbt',
+                              addr=msg['addr'],
+                              timestamp=dt.datetime.now().timetuple()))

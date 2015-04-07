@@ -1,0 +1,79 @@
+#! /usr/bin/python3
+
+import zmq
+
+from config import HEARTBEAT_DAEMON_MESSAGE_ADDR, LANGS_CONF_DIR
+import colors as clr
+from utils import get_local_ip, msg as msg_, wait_for_ack_gen,\
+                  flat_b64archive
+
+print(clr.bblue('Preparing langs/conf directory...'))
+
+import os
+
+conf_b64 = flat_b64archive(os.path.abspath(LANGS_CONF_DIR),
+                           ['.tmp'])
+
+
+local_ip = get_local_ip()
+
+ctx = zmq.Context()
+wait_for_ack = wait_for_ack_gen(ctx, local_ip)
+
+socket = ctx.socket(zmq.PUSH)
+socket.connect(HEARTBEAT_DAEMON_MESSAGE_ADDR)
+
+recv_socket = ctx.socket(zmq.PULL)
+recv_port = recv_socket.bind_to_random_port('tcp://%s' % local_ip)
+
+socket.send_json(msg_(act='list nodes',
+                      addr='tcp://%s:%s' % (local_ip, recv_port)))
+socket.close()
+
+poller = zmq.Poller()
+poller.register(recv_socket, zmq.POLLIN)
+
+nodes = {}
+if poller.poll(3 * 1000):
+    ret = recv_socket.recv_json()
+    poller.unregister(recv_socket)
+    recv_socket.close()
+
+    assert 'act' in ret
+    if ret['act'] == 'nodes update':
+        nodes.update(ret['payload'])
+        print('Nodes are %s.' % (clr.bgreen(str(nodes))))
+
+
+def target(addr):
+    print('>>> processing', clr.blue(addr))
+
+    _ctx = zmq.Context()
+
+    wait_for_ack = wait_for_ack_gen(_ctx, local_ip)
+
+    socket = _ctx.socket(zmq.PUSH)
+    socket.connect(addr)
+
+    ack_port, acked = wait_for_ack()
+
+    socket.send_json(msg_(act='conf update',
+                          addr='tcp://%s:%s' % (local_ip, ack_port),
+                          payload=conf_b64))
+    socket.close()
+
+    if acked():
+        print('%s updated.' % clr.bgreen(addr))
+    else:
+        print('error updating %s' % clr.bred(addr))
+
+
+import multiprocessing as mp
+pool = mp.Pool(maxtasksperchild=15)
+for addr in nodes:
+    pool.apply_async(target, args=(addr,))
+
+
+pool.close()
+pool.join()
+

@@ -1,0 +1,183 @@
+#! /usr/bin/python3
+import os
+
+import sys
+from utils import msg as msg_, logger, get_local_ip, ack_gen,\
+                   flat_b64extract, temp_socket_gen
+from config import MASTER_ADDR, HEARTBEAT_DAEMON_ADDR,\
+                    MASTER_IP, HEARTBEAT_INTERVAL,\
+                    LANGS_CONF_DIR, LOCAL_WOJ_DIR_PREFIX, LOCAL_JUDGE_DIR_PREFIX
+import multiprocessing
+import subprocess
+import time
+
+
+logger = logger()
+
+debug_ = logger.debug
+info_ = logger.info
+warning_ = logger.warning
+critical_ = logger.critical
+error_ = logger.error
+
+
+try:
+    port = sys.argv[2]
+except IndexError:
+    port = None
+
+local_ip = get_local_ip()
+
+import zmq
+ctx = zmq.Context()
+ack = ack_gen(ctx)
+
+task_socket = ctx.socket(zmq.PULL)
+port = port or task_socket.bind_to_random_port('tcp://%s' % local_ip)
+debug_('bound successfully to tcp://%s:%s', local_ip, port)
+
+master_socket = ctx.socket(zmq.PUSH)
+master_socket.connect(MASTER_ADDR)
+debug_('connect to master successfully')
+
+
+def heartbeat_daemon():
+    hbd_ctx = zmq.Context()
+    hbd_socket = hbd_ctx.socket(zmq.PUB)
+    hbd_socket.connect(HEARTBEAT_DAEMON_ADDR)
+
+    while True:
+        time.sleep(HEARTBEAT_INTERVAL)
+        hbd_socket.send_json(msg_(act='heartbeat',
+                                  addr='tcp://%s:%s' % (local_ip, port),
+                                  msg='<3'))
+
+multiprocessing.Process(target=heartbeat_daemon, daemon=True).start()
+info_('heartbeat daemon up')
+
+
+def target(task):
+    args = task['args']
+    source_content = task['source_content']
+
+    def _pj(*p):
+        return os.path.join(*p)
+    def _pabs(p):
+        return os.path.abspath(p)
+
+    _data_dir = _pabs(_pj(LOCAL_WOJ_DIR_PREFIX, 'data'))
+    _temp_dir = _pabs(_pj(LOCAL_WOJ_DIR_PREFIX, 'temp'))
+    args['data_dir'] = _data_dir
+    args['temp_dir'] = _temp_dir
+
+    _data_dir_n = lambda n: _pj(_data_dir, str(n))
+    _temp_dir_n = lambda n: _pj(_temp_dir, str(n))
+
+    pn = args['problem_number']
+    data_pn = _data_dir_n(pn)
+
+    un = args['uid']
+    temp_un = _temp_dir_n(un)
+
+    # called by a process of the process pool
+
+    # check whether required data is ready
+    if not os.path.exists(data_pn):
+        _ctx = zmq.Context()
+
+        msg = temp_socket_gen(_ctx, local_ip)(
+            MASTER_ADDR,
+            msg_(act='request data',
+                 problem_number=args['problem_number'])
+        )
+
+        assert 'act' in msg
+
+        flat_b64extract(msg['data'], data_pn)
+
+    if not os.path.exists(_temp_dir):
+        os.mkdir(_temp_dir)
+    else:
+        if os.path.exists(temp_un):
+            os.rmdir(temp_un)
+
+    os.mkdir(temp_un)
+
+    # write source to new location
+    src = _pabs(_pj(temp_un, os.path.basename(args['source'])))
+    with open(src, 'w') as f:
+        f.write(source_content)
+
+    pygent_path = _pabs(_pj(LOCAL_JUDGE_DIR_PREFIX, 'pygent'))
+    judge_path = _pabs(_pj(LOCAL_JUDGE_DIR_PREFIX, 'judge_all.exe'))
+
+    output_limit = args['output_limit'] or str(8192)  # why???
+
+    debug_('running %s -l %s -u %s -s %s -n %s -D %s -d %s'
+           ' -t %s -m %s -o %s -c %s -p %s %s', judge_path,
+           args['lang'], args['uid'], src, args['problem_number'],
+           data_pn, temp_un, args['time_limit'], args['memory_limit'],
+           output_limit, _pabs(LANGS_CONF_DIR), pygent_path,
+           '-S' if args['special_judge'] else '')
+
+    return subprocess.check_output([judge_path, '-l', args['lang'],
+                                                '-u', args['uid'],
+                                                '-s', src,
+                                                '-n', args['problem_number'],
+                                                '-D', data_pn,
+                                                '-d', _temp_dir,
+                                                '-t', args['time_limit'],
+                                                '-m', args['memory_limit'],
+                                                '-o', output_limit,
+                                                '-c', _pabs(LANGS_CONF_DIR),
+                                                '-p', pygent_path,
+                                                '-S' if args['special_judge']
+                                                     else ''])
+
+
+pool = multiprocessing.Pool(maxtasksperchild=15)
+while True:
+    task = task_socket.recv_json()
+    debug_('new task %s: %s', task['act'], task)
+
+    assert 'act' in task
+    act = task['act']
+
+    if act == 'judge':
+        info_('judge task received')
+
+        args = task['args']
+        initiator_addr = task['addr']
+
+        ack('tcp://%s:%s' % (MASTER_IP, task['ack_port']),
+            rd_key=task['rd_key'])
+
+        def callback(result):
+            info_('result: %s', result)
+
+            initiator_sck = ctx.socket(zmq.PAIR)
+            initiator_sck.connect(initiator_addr)
+            initiator_sck.send_json(msg_(act='judge ret',
+                                         target=task['addr'],
+                                         result=str(result, encoding='ascii')))
+            initiator_sck.close()
+
+        def error_callback(error_result):
+            error_(str(error_result))
+            initiator_sck = ctx.socket(zmq.PAIR)
+            initiator_sck.connect(initiator_addr)
+            initiator_sck.send_json(msg_(act='judge ret error',
+                                         result=str(error_result)))
+            initiator_sck.close()
+
+        pool.apply_async(target, args=(task,),
+                         callback=callback,
+                         error_callback=error_callback)
+    elif act == 'conf update':
+        info_('updating conf')
+
+        flat_b64extract(task['payload'], LANGS_CONF_DIR)
+
+        ack(task['addr'])
+    else:
+        warning_('unable to act, message not understandable')

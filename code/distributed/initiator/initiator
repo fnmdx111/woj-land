@@ -1,0 +1,60 @@
+#! /usr/bin/python3
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-l', '--lang')
+parser.add_argument('-u', '--uid')
+parser.add_argument('-s', '--source')
+parser.add_argument('-n', '--problem-number')
+parser.add_argument('-D', '--data-dir')
+parser.add_argument('-d', '--temp-dir')
+parser.add_argument('-t', '--time-limit')
+parser.add_argument('-m', '--memory-limit')
+parser.add_argument('-o', '--output-limit')
+parser.add_argument('-S', '--special-judge', action='store_true')
+parser.add_argument('-c', '--conf-dir')
+parser.add_argument('-p', '--pygent-path')
+# All the arguments needed.
+
+args = vars(parser.parse_args())
+
+source_content = open(args['source'], 'r').read()
+
+
+import zmq
+from config import MASTER_ADDR
+from utils import get_local_ip, msg as msg_
+
+
+local_ip = get_local_ip()
+
+if __name__ == '__main__':
+    ctx = zmq.Context()
+
+    result_socket = ctx.socket(zmq.PAIR)
+    port = result_socket.bind_to_random_port('tcp://%s' % local_ip)
+    local_addr = 'tcp://%s:%s' % (local_ip, port)
+
+    master_socket = ctx.socket(zmq.PUSH)
+    master_socket.connect(MASTER_ADDR)
+
+    master_socket.send_json(msg_(act='judge',
+                                 args=args,
+                                 source_content=source_content,
+                                 addr=local_addr))
+    ret = result_socket.recv_json()
+
+    assert 'act' in ret
+    act = ret['act']
+
+    if act == 'judge ret':
+        if ret['target'] == local_addr:
+            print(ret['result'])
+        else:
+            print('14 -2 -2')
+    elif act == 'judge ret error':
+        print('14 100 100')
+    else:
+        print('14 -1 -1')
+

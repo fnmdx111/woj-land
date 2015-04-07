@@ -1,0 +1,174 @@
+#! /usr/bin/python3
+import os
+
+import sys
+
+from utils import msg as msg_, logger, get_local_ip, unpack_ret,\
+                  wait_for_ack_gen, flat_b64archive
+import random as rd
+from config import HEARTBEAT_DAEMON_MESSAGE_ADDR, MASTER_PORT,\
+                   MAX_TASK_REDIST, WOJ_DATA_DIR
+import uuid
+import time
+import multiprocessing as mp
+
+
+try:
+    port = int(sys.argv[2])
+except (IndexError, ValueError):
+    port = MASTER_PORT
+
+try:
+    strict = bool(sys.argv[3])
+except IndexError:
+    strict = False
+
+logger = logger()
+
+debug_ = logger.debug
+info_ = logger.info
+warning_ = logger.warning
+critical_ = logger.critical
+error_ = logger.error
+
+local_ip = get_local_ip()
+
+
+import zmq
+
+ctx = zmq.Context()
+wait_for_ack = wait_for_ack_gen(ctx, local_ip)
+
+command_socket = ctx.socket(zmq.PULL)
+
+command_socket.bind('tcp://*:%s' % port)
+debug_('bound to %s successful' % port)
+
+
+def list_nodes(c):
+    sck = c.socket(zmq.PUSH)
+    sck.connect(HEARTBEAT_DAEMON_MESSAGE_ADDR)
+
+    recv_sck = c.socket(zmq.PULL)
+    recv_port = recv_sck.bind_to_random_port('tcp://%s' % local_ip)
+
+    sck.send_json(msg_(act='list nodes',
+                       addr='tcp://%s:%s' % (local_ip, recv_port)))
+    sck.close()
+
+    msg = recv_sck.recv_json()
+    if msg['act'] == 'nodes update':
+        return msg['payload']
+
+    return {}
+
+
+node_table = {}
+
+
+def dist_task(nodes, msg):
+    _ctx = zmq.Context()
+    wait_for_ack = wait_for_ack_gen(_ctx, local_ip)
+
+    if not nodes:
+        error_('all nodes down, we\'ve got no one to assign work to')
+        initiator_sck = _ctx.socket(zmq.PAIR)
+        initiator_sck.connect(msg['addr'])
+        initiator_sck.send_json(msg_(act='judge ret error',
+                                     result='no living nodes'))
+        initiator_sck.close()
+
+        return
+
+    poller = zmq.Poller()
+    cnt = 0
+    while cnt < MAX_TASK_REDIST:
+        if not nodes:
+            time.sleep(5)
+
+        else:
+            distribution_target = rd.choice(list(nodes.keys()))
+            rd_key = str(uuid.uuid4())
+            info_('judge task received, distributing to %s',
+                  distribution_target)
+            ns = _ctx.socket(zmq.PUSH)
+            ns.connect(distribution_target)
+
+            ack_port, acked = wait_for_ack(rd_key=rd_key)
+
+            poller.register(ns, zmq.POLLOUT)
+
+            if poller.poll(3 * 1000):
+                ns.send_json(msg_(act='judge',
+                                  args=msg['args'],
+                                  rd_key=rd_key,
+                                  ack_port=ack_port,
+                                  source_content=msg['source_content'],
+                                  addr=msg['addr']))
+
+                if acked():
+                    # ok
+                    poller.unregister(ns)
+                    return
+
+                # ack timeout
+                warning_('ack timeout')
+            else:
+                # ns send timeout
+                warning_('ns send timeout')
+
+            poller.unregister(ns)
+            cnt += 1
+
+        nodes = list_nodes(_ctx)
+        debug_('refreshed node table %s', nodes)
+
+    initiator_sck = _ctx.socket(zmq.PAIR)
+    initiator_sck.connect(msg['addr'])
+    initiator_sck.send_json(msg_(act='judge ret error',
+                                 result='task dist failure'))
+    initiator_sck.close()
+
+
+def request_data(addr, problem_number):
+    _ctx = zmq.Context()
+    socket = _ctx.socket(zmq.PAIR)
+    socket.connect(addr)
+
+    data = flat_b64archive(os.path.join(WOJ_DATA_DIR, str(problem_number)), [])
+
+    socket.send_json(msg_(act='data',
+                          data=data))
+    socket.close()
+
+
+def mainloop(nodes):
+    def async_apply(target, *args):
+        proc = mp.Process(target=target, args=args)
+        proc.start()
+
+    while True:
+        msg = command_socket.recv_json()
+
+        assert 'act' in msg
+        action = msg['act']
+
+        if action == 'nodes update':
+            nodes.clear()
+            nodes.update(msg['payload'])
+            debug_('new node table %s', nodes)
+        elif action == 'request data':
+            async_apply(request_data,
+                        msg['addr'],
+                        msg['problem_number'])
+
+        elif action == 'judge':
+            async_apply(dist_task, nodes, msg)
+
+        else:
+            if strict:
+                error_('incomprehensible action received, master going down!!!')
+
+
+if __name__ == '__main__':
+    mainloop(node_table)

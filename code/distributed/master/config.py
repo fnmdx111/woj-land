@@ -1,0 +1,14 @@
+
+LANGS_CONF_DIR = '../../judge/langs/conf'
+
+MASTER_PORT = '5555'
+
+HEARTBEAT_DAEMON_IP = '192.168.1.105'
+HEARTBEAT_DAEMON_MESSAGE_PORT = '21557'
+
+HEARTBEAT_DAEMON_MESSAGE_ADDR = 'tcp://%s:%s' % (HEARTBEAT_DAEMON_IP,
+                                                 HEARTBEAT_DAEMON_MESSAGE_PORT)
+
+MAX_TASK_REDIST = 10
+
+WOJ_DATA_DIR = '/home/wo/woj/data'

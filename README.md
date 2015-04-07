@@ -76,6 +76,10 @@ be given -1. `syscall_recorder` will generate a `your_lang_rf.py` according to t
 information it has gathered. And users can directly `from your_lang_rf import rf` to
 facilitate their security settings.
 
+#### 2015.4.7
+With a lot of efforts, DJE finally came into being. Check out the sub-README.md to
+learn more. Remember that, starting small really helps.
+
 Contact
 ----
 For anything with regard to enhancements of woj-land, please file an issue.
